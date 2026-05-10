@@ -1,0 +1,10 @@
+fastapi==0.111.0
+uvicorn==0.29.0
+sqlalchemy==2.0.30
+python-dotenv==1.0.1
+passlib[bcrypt]==1.7.4
+python-jose[cryptography]==3.3.0
+arxiv==2.1.0
+apscheduler==3.10.4
+openai==1.30.0
+pydantic[email]==2.7.1

@@ -8,7 +8,7 @@ from groq import Groq
 from sqlalchemy.orm import Session
 from models import Paper
 
-client = Groq(api_key=os.getenv("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"))
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 SYSTEM_PROMPT = """Bạn là trợ lý nghiên cứu khoa học.
 Hãy tóm tắt abstract sau thành 3-4 câu ngắn gọn bằng tiếng Việt.

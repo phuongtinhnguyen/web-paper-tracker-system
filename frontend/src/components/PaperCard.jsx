@@ -1,63 +1,83 @@
-// ============================================================
-// components/PaperCard.jsx — Người 4 (Diễm) phụ trách
-// ============================================================
-import { Link } from "react-router-dom";
-import { ExternalLink, Heart, Calendar, Users } from "lucide-react";
+import { useState } from "react";
+import { Heart, Calendar, Users, FileText } from "lucide-react";
+import PaperModal from "./PaperModal";
 
 export default function PaperCard({ paper, onToggleFavorite, isFavorite }) {
+  const [showModal, setShowModal] = useState(false);
+
+  // Xử lý logic parse danh sách tác giả
   let authors = [];
-  try { authors = JSON.parse(paper.authors); } catch { authors = [paper.authors]; }
+  try {
+    authors = typeof paper.authors === 'string' ? JSON.parse(paper.authors) : paper.authors;
+  } catch {
+    authors = [paper.authors];
+  }
 
   return (
-    <div className="bg-white rounded-xl border border-green-200 p-5 hover:shadow-md transition-shadow">
-      {/* Title */}
-      <Link to={`/paper/${paper.id}`} className="text-black font-semibold text-sm leading-snug hover:text-green-700 line-clamp-2 block mb-2">
-        {paper.title}
-      </Link>
-
-      {/* Meta */}
-      <div className="flex items-center gap-4 text-xs text-gray-400 mb-3">
-        <span className="flex items-center gap-1">
-          <Users size={11} /> {authors.slice(0,2).join(", ")}{authors.length>2 && " +..."}
-        </span>
-        {paper.published_at && (
-          <span className="flex items-center gap-1">
-            <Calendar size={11} /> {paper.published_at}
-          </span>
-        )}
-      </div>
-
-      {/* Summary */}
-      {paper.summary ? (
-        <p className="text-xs text-gray-600 leading-relaxed line-clamp-3 bg-blue-50 rounded-lg p-3 mb-3">
-          ✨ {paper.summary}
-        </p>
-      ) : (
-        <p className="text-xs text-gray-400 italic mb-3 line-clamp-2">{paper.abstract}</p>
-      )}
-
-      {/* Actions */}
-      <div className="flex items-center justify-between">
-        <a href={paper.link} target="_blank" rel="noopener noreferrer"
-          className="flex items-center gap-1 text-xs text-gray-500 hover:text-green-700">
-          <ExternalLink size={12} /> click here to read
-        </a>
-        <button 
-          onClick={(e) => {
-            e.stopPropagation(); // Ngăn sự kiện click lan ra ngoài thẻ card
-            onToggleFavorite();
-          }}
-          className="flex items-center gap-1 text-sm transition-colors"
+    <>
+      <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md hover:border-green-200 transition-all duration-300 group flex flex-col h-full">
+        {/* Hàng Header: Tiêu đề bên trái, Cụm nút bên phải */}
+        <div className="flex justify-between items-start gap-3 mb-auto">
+          {/* Nhấn vào tiêu đề để mở bài báo gốc */}
+          <a 
+            href={paper.link} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-gray-800 font-bold text-[13px] sm:text-sm leading-snug line-clamp-2 group-hover:text-green-700 transition-colors flex-1"
+            title="Nhấn để đọc toàn bộ bài báo"
           >
-          <Heart 
-            size={18} 
-            // Nếu isFavorite là true thì tô màu đỏ, ngược lại để màu xám
-            fill={isFavorite ? "#ef4444" : "none"} 
-            className={isFavorite ? "text-red-500" : "text-gray-400"}
-          />
-          <span>{isFavorite ? "Đã lưu" : "Lưu"}</span>
-        </button>
+            {paper.title}
+          </a>
+          
+          {/* Cụm nút Summary và Heart nằm kế nhau */}
+          <div className="flex items-center gap-0.5 flex-shrink-0 -mt-1">
+            <button
+              onClick={() => setShowModal(true)}
+              className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-full transition-colors"
+              title="Xem tóm tắt nhanh"
+            >
+              <FileText size={17} />
+            </button>
+
+            <button 
+              onClick={(e) => {
+                e.preventDefault();
+                onToggleFavorite();
+              }}
+              className="p-1.5 rounded-full transition-colors hover:bg-red-50 group/heart"
+              title={isFavorite ? "Bỏ lưu" : "Lưu vào yêu thích"}
+            >
+              <Heart 
+                size={17} 
+                fill={isFavorite ? "#ef4444" : "none"} 
+                className={isFavorite ? "text-red-500" : "text-gray-400 group-hover/heart:text-red-400"}
+              />
+            </button>
+          </div>
+        </div>
+
+        {/* Hàng Meta: Hiển thị tác giả và ngày (nhỏ và gọn) */}
+        <div className="mt-4 space-y-1.5">
+          <div className="flex items-center gap-2 text-[10px] text-gray-500 uppercase tracking-tight">
+            <Users size={12} className="text-green-600 flex-shrink-0" />
+            <span className="truncate font-semibold">
+              {Array.isArray(authors) ? authors.join(", ") : authors}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-[10px] text-gray-400">
+            <Calendar size={12} className="flex-shrink-0" />
+            <span>{paper.published_at || "N/A"}</span>
+          </div>
+        </div>
       </div>
-    </div>
+
+      {/* Gọi Modal chi tiết */}
+      <PaperModal 
+        isOpen={showModal} 
+        onClose={() => setShowModal(false)} 
+        paper={paper}
+        authors={authors}
+      />
+    </>
   );
 }

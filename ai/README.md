@@ -60,6 +60,12 @@ ai-service/
 
 - Python 3.10+
 - Groq API key (miễn phí tại console.groq.com)
+  B1. Truy cập https://groq.com/
+  B2. Tạo tài khoản đăng nhập
+  B3. Chọn Developers ở góc phải màn hình => Free API Keys
+  B4. chọn Create API Key => Đặt tên => Done.
+  B5. Sau khi nhấn Done thì sẽ xuất hiện key, cop key bỏ vào file .env
+  Lưu ý: Key chỉ xuất hiện 1 lần nếu như quên thì phải tạo lại
 
 ### Cài thư viện
 

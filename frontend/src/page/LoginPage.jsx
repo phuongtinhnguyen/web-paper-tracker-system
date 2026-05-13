@@ -2,6 +2,7 @@ import  { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import backgroundImg from '../assets/background.jpg';
 import SuccessModal from '../components/SuccessModal';
+import ErrorModal from '../components/ErrorModal';
 import { login } from '../services/api';
 
 const LoginPage = () => {
@@ -32,6 +33,7 @@ const LoginPage = () => {
 
       setModalConfig({
         isOpen: true,
+        type: "success",
         title: "Thành công!",
         message: `Chào mừng bạn trở lại. Hệ thống đã sẵn sàng!`,
         onConfirm: () => {
@@ -43,6 +45,7 @@ const LoginPage = () => {
       const msg = err?.response?.data?.message || "Email hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại!";
       setModalConfig({
         isOpen: true,
+        type: "error",
         title: "Đăng nhập thất bại",
         message: msg,
         onConfirm: () => setModalConfig((prev) => ({ ...prev, isOpen: false }))
@@ -162,13 +165,21 @@ const LoginPage = () => {
           </div>
         )}
       </div>
-
-      <SuccessModal
-        isOpen={modalConfig.isOpen}
-        onClose={modalConfig.onConfirm}
-        title={modalConfig.title}
-        message={modalConfig.message}
-      />
+        {modalConfig.type === "success" ? (
+        <SuccessModal
+          isOpen={modalConfig.isOpen}
+          onClose={modalConfig.onConfirm}
+          title={modalConfig.title}
+          message={modalConfig.message}
+        />
+      ) : (
+        <ErrorModal
+          isOpen={modalConfig.isOpen}
+          onClose={modalConfig.onConfirm}
+          title={modalConfig.title}
+          message={modalConfig.message}
+        />
+      )}
     </div>
   );
 };

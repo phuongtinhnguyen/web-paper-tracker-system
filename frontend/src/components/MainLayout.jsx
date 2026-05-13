@@ -23,9 +23,7 @@ export default function MainLayout({ readCount, onSearch, onClearSearch }) {
                 </p>
               </div>
 
-              <div className="flex-1 flex justify-center max-w-2xl">
-                <SearchBar onSearch={onSearch} onClear={onClearSearch} />
-              </div>
+            
 
               
             </div>

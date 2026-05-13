@@ -1,58 +1,31 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { registerUser } from '../services/api'; // Sử dụng hàm từ file api.js
-import backgroundImg from '../assets/background.jpg';
-import SuccessModal from '../components/SuccessModal';
+import { useNavigate } from 'react-router-dom'; 
+import backgroundImg from '../assets/background.jpg'; 
+import SuccessModal from '../components/SuccessModal'; 
 
 const RegisterPage = () => {
   const [email, setEmail] = useState('');
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState(''); 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  
+  const navigate = useNavigate(); 
 
-  const navigate = useNavigate();
+  const handleRegister = (e) => {
+  e.preventDefault();
+  
+  if (password !== confirmPassword) {
+    alert("Mật khẩu xác nhận không khớp!");
+    return;
+  }
 
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    setErrorMessage(''); 
+  
+  localStorage.setItem("username", username); 
 
-    // Kiểm tra logic mật khẩu tại Frontend
-    if (password !== confirmPassword) {
-      setErrorMessage("Mật khẩu xác nhận không khớp!");
-      return;
-    }
-
-    try {
-      
-      const response = await registerUser({
-        username: username, 
-        email: email,
-        password: password
-      });
-
-      // Kiểm tra phản hồi từ Backend
-      if (response.status === 200 || response.status === 201) {
-        console.log("Đăng ký thành công:", response.data);
-        localStorage.setItem("username", username); 
-        setShowModal(true);
-      }
-    } catch (error) {
-      // Xử lý lỗi chi tiết từ Axios
-      if (error.response) {
-        
-        const message = error.response.data.detail || "Đăng ký thất bại.";
-        setErrorMessage(message);
-      } else if (error.request) {
-        
-        setErrorMessage("Không thể kết nối đến máy chủ. Hãy kiểm tra Backend.");
-      } else {
-        setErrorMessage("Đã xảy ra lỗi không xác định.");
-      }
-      console.error("Axios Error:", error);
-    }
-  };
+  console.log("Gửi yêu cầu đăng ký:", { email, username, password });
+  setShowModal(true); 
+};
 
   return (
     <div 
@@ -63,39 +36,33 @@ const RegisterPage = () => {
 
       <div 
         className="relative bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl p-10 border border-white/20"
-        style={{ width: '450px', minHeight: '720px' }}
+        style={{ width: '450px', minHeight: '700px' }} 
       >
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900">Tạo tài khoản</h1>
-          <p className="text-[20px] text-gray-600 mt-3 italic">Hệ thống Paper Tracker</p>
-          
-          {/* Hiển thị lỗi nếu có */}
-          {errorMessage && (
-            <div className="mt-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded text-sm font-medium animate-pulse">
-              {errorMessage}
-            </div>
-          )}
+          <p className="text-[20px] text-gray-600 mt-3">Tham gia cùng chúng tôi ngay hôm nay</p>
         </div>
 
         <form onSubmit={handleRegister} className="space-y-[15px]">
+          
           <div>
             <label className="block text-[18px] font-semibold text-gray-700 ml-4 mb-1">Tên người dùng</label>
             <input
               type="text"
               required
-              className="block mx-auto w-11/12 px-5 py-3 text-lg rounded-xl border border-gray-300 outline-none bg-white/50 focus:ring-2 focus:ring-green-500 transition-all"
-              placeholder="Nhập username"
+              className="block mx-auto w-11/12 px-5 py-3 text-lg rounded-xl border border-gray-300 outline-none bg-white/50"
+              placeholder="Ví dụ: nva123"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
             />
           </div>
 
           <div>
-            <label className="block text-[18px] font-semibold text-gray-700 ml-4 mb-1">Email</label>
+            <label className="block text-[18px] font-semibold text-gray-700 ml-4 mb-1">Email của bạn</label>
             <input
               type="email"
               required
-              className="block mx-auto w-11/12 px-5 py-3 text-lg rounded-xl border border-gray-300 outline-none bg-white/50 focus:ring-2 focus:ring-green-500 transition-all"
+              className="block mx-auto w-11/12 px-5 py-3 text-lg rounded-xl border border-gray-300 outline-none bg-white/50"
               placeholder="example@gmail.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -107,7 +74,7 @@ const RegisterPage = () => {
             <input
               type="password"
               required
-              className="block mx-auto w-11/12 px-5 py-3 text-lg rounded-xl border border-gray-300 outline-none bg-white/50 focus:ring-2 focus:ring-green-500 transition-all"
+              className="block mx-auto w-11/12 px-5 py-3 text-lg rounded-xl border border-gray-300 outline-none bg-white/50"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -119,7 +86,7 @@ const RegisterPage = () => {
             <input
               type="password"
               required
-              className="block mx-auto w-11/12 px-5 py-3 text-lg rounded-xl border border-gray-300 outline-none bg-white/50 focus:ring-2 focus:ring-green-500 transition-all"
+              className="block mx-auto w-11/12 px-5 py-3 text-lg rounded-xl border border-gray-300 outline-none bg-white/50"
               placeholder="••••••••"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
@@ -128,7 +95,7 @@ const RegisterPage = () => {
           
           <button
             type="submit"
-            className="block mt-6 mx-auto w-11/12 bg-green-600 hover:bg-green-700 text-white text-[20px] font-bold py-4 rounded-xl transition duration-300 shadow-lg active:scale-95"
+            className="block mt-4 mx-auto w-11/12 !bg-green-600 hover:!bg-green-700 text-white text-[20px] font-bold py-4 rounded-xl transition duration-300 shadow-lg active:scale-[0.98]"
           >
             Đăng ký ngay
           </button>
@@ -139,22 +106,23 @@ const RegisterPage = () => {
           <button 
             type="button" 
             onClick={() => navigate('/')} 
-            className="font-semibold text-green-700 hover:underline"
+            className="font-semibold text-indigo-600 hover:underline"
           >
-            Đăng nhập ngay
+            Đăng nhập tại đây
           </button>
         </div>
       </div>
 
+      
       <SuccessModal 
         isOpen={showModal} 
         onClose={() => {
           setShowModal(false);
-          navigate('/');
+          navigate('/'); 
         }}
         title="Thành công!"
-        message={`Chào mừng ${username}!\nHệ thống đã sẵn sàng xử lý tài liệu cho bạn.`}
-        buttonText="Đến trang Đăng nhập" 
+        message={`Chào mừng ${username}!\nTài khoản ${email} đã được tạo thành công.`}
+        buttonText= "Đăng nhập ngay" 
       />
     </div>
   );

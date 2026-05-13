@@ -1,15 +1,97 @@
-import axios from 'axios';
+import axios from "axios";
 
+// Cấu hình base URL của backend. Đổi lại cho phù hợp với môi trường của bạn.
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
-const API = axios.create({
-  // Đây là nơi lưu địa chỉ "nhà" của bạn BE
-  baseURL: 'http://localhost:8000', 
-  headers: {
-    'Content-Type': 'application/json',
-  },
+const api = axios.create({
+  baseURL: BASE_URL,
+  headers: { "Content-Type": "application/json" },
 });
 
-export const registerUser = (userData) => API.post('/auth/register', userData);
-export const loginUser = (credentials) => API.post('/auth/login', credentials);
+// Tự động đính kèm token vào mỗi request (nếu có)
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("access_token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
 
-export default API;
+// ── AUTH ─────────────────────────────────────────────────────────────────────
+
+/** POST /auth/login  → { access_token, user } */
+export const login = (email, password) =>
+  api.post("/auth/login", { email, password });
+
+/** POST /auth/register  → { message } */
+export const register = (name, email, password) =>
+  api.post("/auth/register", { name, email, password });
+
+/** POST /auth/forgot-password  → { message } */
+export const forgotPassword = (email) =>
+  api.post("/auth/forgot-password", { email });
+
+// ── PAPERS ───────────────────────────────────────────────────────────────────
+
+/**
+ * GET /papers?page=1&limit=5&topic_id=xxx&search=yyy
+ * → { data: Paper[], total: number, page: number, totalPages: number }
+ */
+export const getPapers = (params = {}) =>
+  api.get("/papers", { params });
+
+/** GET /papers/:id  → Paper */
+export const getPaperById = (id) =>
+  api.get(`/papers/${id}`);
+
+// ── TOPICS ───────────────────────────────────────────────────────────────────
+
+/** GET /topics  → Topic[] */
+export const getTopics = () =>
+  api.get("/topics");
+
+/** GET /topics/:id/papers?page=1&limit=6  → { data: Paper[], total, totalPages } */
+export const getPapersByTopic = (topicId, params = {}) =>
+  api.get(`/topics/${topicId}/papers`, { params });
+
+// ── FAVORITES ────────────────────────────────────────────────────────────────
+
+/** GET /favorites?page=1&limit=6  → { data: Paper[], total, totalPages } */
+export const getFavorites = (params = {}) =>
+  api.get("/favorites", { params });
+
+/** POST /favorites/:paperId  → { message } */
+export const addFavorite = (paperId) =>
+  api.post(`/favorites/${paperId}`);
+
+/** DELETE /favorites/:paperId  → { message } */
+export const removeFavorite = (paperId) =>
+  api.delete(`/favorites/${paperId}`);
+
+// ── HISTORY ──────────────────────────────────────────────────────────────────
+
+/** GET /history?page=1&limit=6&search=yyy  → { data: Paper[], total, totalPages } */
+export const getHistory = (params = {}) =>
+  api.get("/history", { params });
+
+/** DELETE /history/:paperId  → { message } */
+export const removeHistory = (paperId) =>
+  api.delete(`/history/${paperId}`);
+
+/** DELETE /history  → { message } */
+export const clearHistory = () =>
+  api.delete("/history");
+
+// ── TRACKED TOPICS ───────────────────────────────────────────────────────────
+
+/** GET /user/tracked-topics  → Topic[] */
+export const getTrackedTopics = () =>
+  api.get("/user/tracked-topics");
+
+/** POST /user/tracked-topics/:topicId  → { message } */
+export const trackTopic = (topicId) =>
+  api.post(`/user/tracked-topics/${topicId}`);
+
+/** DELETE /user/tracked-topics/:topicId  → { message } */
+export const untrackTopic = (topicId) =>
+  api.delete(`/user/tracked-topics/${topicId}`);
+
+export default api;

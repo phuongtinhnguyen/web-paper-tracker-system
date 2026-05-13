@@ -6,6 +6,9 @@ import RegisterPage from './page/RegisterPage';
 import DashboardPage from './page/DashboardPage';
 import FavoritesPage from './page/FavoritesPage';
 import HistoryPage from './page/HistoryPage';
+import TopicPage from './page/TopicsPage';
+import TrackingTopics from './page/TrackingTopicPage';
+
 
 function App() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -25,12 +28,15 @@ function App() {
           <Route path="/dashboard" element={<DashboardPage searchQuery={searchQuery} />} />
           <Route path="/favorites" element={<FavoritesPage searchQuery={searchQuery} />} />
           <Route path="/history" element={<HistoryPage searchQuery={searchQuery} />} />
-          <Route path="/topics" element={<div>Quản lý Topic</div>} />
+          <Route path="/topics" element={<TopicPage searchQuery={searchQuery} />} />
+          
+          <Route path="/tracking-topics" element={<TrackingTopics  searchQuery={searchQuery}/>} />
         </Route>
 
-        <Route path="/paper/:id" element={<div>Chi tiết bài báo</div>} />
+        
       </Routes>
     </BrowserRouter>
   );
 }
+
 export default App;

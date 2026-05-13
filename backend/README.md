@@ -59,7 +59,8 @@ backend/
         |-- response.js
 ```
 
-Các feature tiếp theo như `auth`, `topics`, `papers`, `favorites` sẽ được thêm vào trong `src/modules/`.
+Các feature tiếp theo như `topics`, `papers`, `favorites` sẽ được thêm vào trong `src/modules/`.
+Module `auth` đã có trong `src/modules/auth`.
 
 ---
 
@@ -187,15 +188,106 @@ Expected response:
 
 ---
 
+### Auth - Register
+
+```http
+POST /api/v1/auth/register
+Content-Type: application/json
+
+{
+  "username": "Test User",
+  "email": "test@gmail.com",
+  "password": "123456"
+}
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "Register successfully",
+  "data": {
+    "user": {
+      "id": 1,
+      "email": "test@gmail.com",
+      "username": "Test User",
+      "created_at": "2026-05-14T00:00:00.000Z"
+    }
+  }
+}
+```
+
+### Auth - Login
+
+```http
+POST /api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@gmail.com",
+  "password": "123456"
+}
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "Login successfully",
+  "data": {
+    "access_token": "jwt-token",
+    "username": "Test User",
+    "user": {
+      "id": 1,
+      "email": "test@gmail.com",
+      "username": "Test User"
+    }
+  }
+}
+```
+
+### Auth - Me
+
+```http
+GET /api/v1/auth/me
+Authorization: Bearer <access_token>
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "OK",
+  "data": {
+    "user": {
+      "id": 1,
+      "email": "test@gmail.com",
+      "username": "Test User",
+      "created_at": "2026-05-14T00:00:00.000Z"
+    }
+  }
+}
+```
+
+Auth notes:
+
+- Register nhận `username`, `email`, `password`.
+- `username` được lưu vào field `users.full_name`.
+- Password được hash bằng `bcrypt`.
+- Login trả JWT trong `data.access_token`.
+- Protected API dùng header `Authorization: Bearer <access_token>`.
+- Logout hiện xử lý phía client bằng cách xóa token.
+
+---
+
 ## 6. Planned API Modules
 
-Các module BE sẽ được triển khai lần lượt:
+Các module BE tiếp theo sẽ được triển khai lần lượt:
 
 ```txt
-POST   /api/v1/auth/register
-POST   /api/v1/auth/login
-GET    /api/v1/auth/me
-
 GET    /api/v1/topics
 POST   /api/v1/topics
 PUT    /api/v1/topics/:id
@@ -312,8 +404,8 @@ Thứ tự phát triển backend:
 
 ```txt
 1. Core skeleton
-2. Auth module
-3. Topics module
+2. Auth module - done
+3. Topics module - next
 4. Papers list/detail
 5. Favorites
 6. Search/filter

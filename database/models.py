@@ -54,8 +54,12 @@ class Paper(Base):
     pdf_url = Column(String(500))
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+    # Khóa ngoại trỏ về bảng topics
+    topic_id = Column(Integer, ForeignKey('topics.id'))
+
     # Quan hệ 2 chiều
     favorited_by = relationship("User", secondary=favorites_table, back_populates="saved_papers")
+    topic = relationship("Topic", back_populates="papers")
 
 class Topic(Base):
     __tablename__ = 'topics'
@@ -65,3 +69,4 @@ class Topic(Base):
 
     # Quan hệ 2 chiều
     followers = relationship("User", secondary=user_topics_table, back_populates="followed_topics")
+    papers = relationship("Paper", back_populates="topic")

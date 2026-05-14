@@ -1,17 +1,17 @@
 import { useState, useEffect } from "react";
 import { Trash2, ChevronLeft, ChevronRight, Heart, Loader2 } from "lucide-react";
 import PaperCard from "../components/PaperCard";
-import { getFavorites, removeFavorite } from "../services/api";
+import { getFavorites, removeFavorite } from "../services/Api";
 
 export default function FavoritesPage() {
   const [favorites, setFavorites] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null);
 
   // Phân trang
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
+  const [total, setTotal] = useState(0);S
   const itemsPerPage = 5;
 
   useEffect(() => {

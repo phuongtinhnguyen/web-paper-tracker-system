@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Loader2,ChevronDown} from "lucide-react";
 import PaperCard from "../components/PaperCard";
-import { getPapers, addFavorite, removeFavorite } from "../services/api";
+import { getPapers, addFavorite, removeFavorite } from "../services/Api";
 import SearchBar from "../components/SearchBar";
 import { ListFilter } from "lucide-react";
 

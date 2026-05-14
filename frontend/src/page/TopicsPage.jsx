@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import PaperCard from "../components/PaperCard";
 import { Loader2, LayoutGrid, ChevronLeft, ChevronRight, Hash } from "lucide-react";
-import { getTopics, getPapersByTopic, addFavorite, removeFavorite } from "../services/api";
+import { getTopics, getPapersByTopic, addFavorite, removeFavorite } from "../services/Api";
 
 export default function TopicPage() {
   const [topics, setTopics] = useState([]);

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import PaperCard from "../components/PaperCard";
 import SuccessModal from "../components/SuccessModal";
 import { Trash2, Clock, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
-import { getHistory, removeHistory, clearHistory, addFavorite, removeFavorite } from "../services/api";
+import { getHistory, removeHistory, clearHistory, addFavorite, removeFavorite } from "../services/Api";
 
 export default function HistoryPage({ searchQuery }) {
   const [historyList, setHistoryList] = useState([]);

@@ -85,92 +85,98 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 
 - [x] Màn hình đăng ký
 - [x] Màn hình đăng nhập
-- [x] Form đăng ký gọi API đăng ký
-- [x] Form đăng nhập gọi API đăng nhập
 - [x] Lưu token/username sau khi đăng nhập thành công
+- [ ] Form đăng ký gọi API đăng ký
+- [ ] Form đăng nhập gọi API đăng nhập
 - [ ] Chặn protected pages khi user chưa đăng nhập
-- [ ] Logout xóa token và thông tin user khỏi localStorage
 
 ### Thêm, sửa, xoa chủ đề theo dõi
 
 - [x] UI thêm chủ đề theo dõi
-- [x] UI sửa chủ đề theo dõi
 - [x] UI xóa chủ đề theo dõi
-- [ ] Trang quản lý chủ đề đầy đủ
-- [ ] Đồng bộ thêm/sửa/xóa chủ đề với Backend API
+- [ ] Call API thêm chủ đề theo dõi
+- [ ] Call API xóa chủ đề theo dõi
+- [ ] Sửa tên lại thành "Chủ đề theo dõi"
+- [ ] Sửa "Trang quản lý topic" thành "Trang quản lý chủ đề"
+- [ ] UI sửa chủ đề theo dõi - Low priority
+- [ ] Call API sửa chủ đề theo dõi - Low priority
 
 ### Tự động lấy paper mới theo chủ đề
 
-- [ ] UI hiển thị trạng thái lấy paper mới
-- [ ] UI hiển thị paper mới theo từng chủ đề theo dõi
-- [ ] UI refresh/reload danh sách sau khi crawler có paper mới
+- [x] UI Trang quản lý chủ đề đầy đủ
+- [ ] Nhấn vào chủ đề trong trang "Quản lý chủ đề" hiển thị các chủ đề ra theo thứ tự ngày tạo gần nhất
+- [ ] Nhấn vào chủ đề trong trang "Chủ đề theo dõi" hiển thị các chủ đề ra theo thứ tự ngày tạo gần nhất
+- [ ] UI refresh/reload danh sách sau khi crawler có paper mới - Low Priority
 
 ### Lưu thông tin paper: tiêu đề, abstract, tác giả, ngày công bố, link
 
 - [x] Component paper card hiển thị tiêu đề
-- [x] Component paper card hiển thị abstract hoặc summary
+- [x] Component paper card hiển thị abstract
 - [x] Component paper card hiển thị tác giả
 - [x] Component paper card hiển thị ngày công bố nếu có dữ liệu
 - [x] Component paper card hiển thị link đọc paper
 
 ### Tom tắt ngắn ý chính của paper từ abstract
 
-- [x] Component paper card hiển thị summary nếu paper có summary
-- [ ] UI yêu cầu tạo/cập nhật summary cho paper
-- [ ] Loading/error state khi summary đang được tạo
+- [ ] Hiển thị summary trên paper card
+
 
 ### Hien thị danh sách paper mới
 
-- [x] Component paper card dùng cho danh sách paper
-- [ ] Trang danh sách paper mới
-- [ ] Gọi API lấy danh sách paper mới
+- [x] Filter "Bài báo gần đây"
+- [x] Filter "Bài báo 2 ngày gần đây"
+- [ ] Gọi API lấy danh sách paper "Bài báo gần đây"
+- [ ] Gọi API lấy danh sách paper "Bài báo 2 ngày gần đây"
 - [ ] Pagination hoặc load more cho danh sách paper mới
 
 ### Tim kiếm, lọc paper theo từ khoa hoặc chủ đề
 
 - [x] SearchBar nhập từ khóa
-- [x] App lưu search query ở state
-- [ ] Gọi API search theo từ khóa
-- [ ] UI lọc paper theo chủ đề
-- [ ] Empty state khi không có kết quả
+- [ ] Gọi API search theo title
+- [ ] Gọi API search theo abstract
+- [ ] Gọi API search theo authors
+- [ ] App lưu search query ở state
 
 ### Xem chi tiết paper
 
-- [ ] Trang chi tiết paper
-- [ ] Gọi API lấy chi tiết paper
-- [ ] Hiển thị abstract, summary, tác giả, ngày công bố và link paper
+- [ ] UI Trang chi tiết paper theo abstract
+- [ ] Gọi API trả về tiêu đề, abstract, tác giả, ngày công bố, url paper
+- [ ] Hiển thị abstract, summary, tác giả, ngày công bố và link paper và những bài báo liên quan
 
 ### Luu paper yêu thích
 
-- [x] PaperCard có nút favorite
+- [x] UI PaperCard có nút favorite
 - [x] Sidebar có navigation tới mục yêu thích
 - [ ] Gọi API lưu paper yêu thích
 - [ ] Gọi API bỏ lưu paper yêu thích
-- [ ] Trang danh sách paper yêu thích
+- [ ] UI Trang danh sách paper yêu thích
+- [ ] Gọi API hiển thị danh sách paper yêu thích của user đang login
 
-### Gợi ý paper liên quan
+
+### Chưa cần làm ở sprint 1
+### Nâng cao - Gợi ý paper liên quan
 
 - [ ] UI hiển thị danh sách paper liên quan
 - [ ] Gọi API lấy paper liên quan theo paper đang xem
 
-### Phát hiện paper trùng hoặc gần giống
+### Nâng cao - Phát hiện paper trùng hoặc gần giống
 
 - [ ] UI hiển thị cảnh báo paper trùng/gần giống
 - [ ] UI hiển thị phần trăm similarity
 
-### Gửi thong bao khi co paper mới
+### Nâng cao - Gửi thong bao khi co paper mới
 
 - [ ] UI notification khi có paper mới
 - [ ] Badge/counter số paper mới
 - [ ] Trạng thái đã đọc thông báo
 
-### Thong ke xu hưong theo chủ đề
+### Nâng cao - Thong ke xu hưong theo chủ đề
 
 - [ ] Dashboard thống kê số paper theo chủ đề
 - [ ] Biểu đồ xu hướng theo thời gian
 - [ ] Bộ lọc thời gian cho thống kê
 
-### Chấm điem paper đang đọc
+### Nâng cao - Chấm điem paper đang đọc
 
 - [ ] UI chấm điểm paper
 - [ ] Hiển thị điểm đã chấm
@@ -182,8 +188,9 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 
 ### Đăng ký, đăng nhập
 
-- [ ] API đăng ký
-- [ ] API đăng nhập
+- [x] API đăng ký
+- [x] API đăng nhập
+- [ ] Sửa API đăng ký lại bổ sung thêm giờ tạo
 - [ ] Hash password
 - [ ] JWT access token
 - [ ] Middleware bảo vệ protected API
@@ -193,86 +200,70 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 
 - [ ] API lấy danh sách chủ đề theo dõi
 - [ ] API thêm chủ đề theo dõi
-- [ ] API sửa chủ đề theo dõi
+- [ ] API sửa chủ đề theo dõi - Low priority
 - [ ] API xóa chủ đề theo dõi
 - [ ] Validate tên chủ đề
 
 ### Tự động lấy paper mới theo chủ đề
 
-- [ ] Service gọi arXiv API theo chủ đề
-- [ ] Scheduler tự động chạy crawler
-- [ ] Logic tránh lưu trùng paper theo `arxiv_id`
+- [ ] API lấy đầy đủ papers của chủ đề nào đó nhưng sắp xếp theo ngày tạo gần nhất
 - [ ] API trigger crawler thủ công cho môi trường dev
 
 ### Lưu thông tin paper: tiêu đề, abstract, tác giả, ngày công bố, link
 
-- [ ] Service lưu paper vào database
-- [ ] Chuẩn hóa authors trước khi trả API
-- [ ] Chuẩn hóa `published_date`/`pdf_url` trong response
-- [ ] Validate dữ liệu paper trước khi lưu
+- [ ] API trả về tiêu đề, abstract, tác giả, ngày công bố, url paper
 
 ### Tom tắt ngắn ý chính của paper từ abstract
 
-- [ ] API yêu cầu tóm tắt một paper
+- [ ] API trả về bản tóm tắt một paper
 - [ ] Service gọi AI summary module
 - [ ] Lưu summary trả về vào database
 - [ ] Xử lý lỗi khi AI service thất bại
 
 ### Hien thị danh sách paper mới
 
-- [ ] API lấy danh sách paper mới
-- [ ] Pagination bằng `page` và `limit`
-- [ ] Sort theo ngày công bố hoặc ngày crawl
+- [ ] API lấy danh sách paper gần đây (lấy tất cả papers nhưng sắp xếp theo gần đây)
+- [ ] API lấy danh sách paper gần đây (lấy tất cả papers nhưng sắp xếp theo 2 gần đây)
 
 ### Tim kiếm, lọc paper theo từ khoa hoặc chủ đề
 
-- [ ] API search paper theo từ khóa
-- [ ] API filter paper theo chủ đề
-- [ ] Pagination cho kết quả search/filter
-- [ ] Validate query params
+- [ ] API search theo title
+- [ ] API search theo abstract
+- [ ] API search theo authors
 
 ### Xem chi tiết paper
 
-- [ ] API lấy chi tiết paper theo id
-- [ ] Trả 404 khi không tìm thấy paper
-- [ ] Trả đủ metadata, abstract, summary và link
+- [x] API trả về tiêu đề, abstract, tác giả, ngày công bố, url paper - Làm theo check list ở trên
 
 ### Luu paper yêu thích
 
 - [ ] API lưu paper yêu thích
 - [ ] API bỏ lưu paper yêu thích
 - [ ] API lấy danh sách paper yêu thích
-- [ ] Chặn lưu trùng favorite
 
-### Gợi ý paper liên quan
+### Nâng cao - Gợi ý paper liên quan
 
 - [ ] API lấy paper liên quan
-- [ ] Tích hợp logic related từ AI/Search service
 - [ ] Giới hạn số lượng paper gợi ý
 
-### Phát hiện paper trùng hoặc gần giống
+### Nâng cao - Phát hiện paper trùng hoặc gần giống
 
-- [ ] API check duplicate
-- [ ] Tích hợp AI duplicate detection
-- [ ] Trả similarity và matched paper
+- [ ] API lấy tên và id các paper trùng hoặc gần giống
 
-### Gửi thong bao khi co paper mới
+### Nâng cao - Gửi thong bao khi co paper mới
 
-- [ ] Service tạo thông báo khi crawler có paper mới
-- [ ] API lấy danh sách thông báo
-- [ ] API đánh dấu thông báo đã đọc
+- [ ] Service tạo thông báo khi crawler có paper mới - check sau
+- [ ] API lấy danh sách thông báo - check sau
+- [ ] API đánh dấu thông báo đã đọc - check sau
 
-### Thong ke xu hưong theo chủ đề
+### Nâng cao - Thong ke xu hưong theo chủ đề
 
-- [ ] API thống kê paper theo chủ đề
-- [ ] API thống kê xu hướng theo thời gian
-- [ ] API trả dữ liệu phù hợp cho chart
+- [ ] API lấy danh sách topic title trong bảng `trending`
 
-### Chấm điem paper đang đọc
+### Nâng cao - Chấm điem paper đang đọc
 
-- [ ] API chấm điểm paper
+- [ ] API lưu điểm đã user chấm vào DB
 - [ ] API lấy điểm paper của user
-- [ ] Validate thang điểm
 
 ---
 
@@ -295,6 +286,7 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 
 - [x] Bảng `papers` để lưu paper crawl được
 - [x] Cột `arxiv_id` unique để tránh trùng paper theo arXiv ID
+- [ ] Tự độngc cập nhật data của chủ đề mới tối thiểu 1 ngày 2 lần
 - [ ] Bảng/quan hệ map paper với topic crawl được
 - [ ] Bảng lưu trạng thái lịch sử crawler
 
@@ -337,35 +329,35 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 - [x] Foreign key tới `users`
 - [x] Foreign key tới `papers`
 
-### Gợi ý paper liên quan
+### Nâng cao - Gợi ý paper liên quan
+- [ ] Bảng `related_papers`
+- [ ] Cột `paper_ID`
+- [ ] Cột `related_paper_ID`
+- [ ] Tìm paper cùng topic
+- [ ] Tìm paper cùng tác giả - Low Priority
 
-- [x] Field `title` để trích keyword gợi ý
-- [x] Field `authors` để tìm paper cùng tác giả
-- [ ] Index hỗ trợ query related papers
+### Nâng cao - Phát hiện paper trùng hoặc gần giống
 
-### Phát hiện paper trùng hoặc gần giống
+- [ ] Bảng `matching_papers`
+- [ ] Cột `paper_ID`
+- [ ] Cột `related_paper_ID`
+- [ ] Tìm paper trùng hoặc gần giống bằng python
 
-- [x] Field `title` để so sánh
-- [x] Field `abstract` để so sánh
-- [x] Unique constraint trên `arxiv_id`
+### Nâng cao - Gửi thong bao khi co paper mới
 
-### Gửi thong bao khi co paper mới
+- [ ] Server DB cào data theo giờ + gửi event cho FE/BE sau khi cào xong
 
-- [ ] Bảng `notifications`
-- [ ] Cột trạng thái đã đọc/chưa đọc
-- [ ] Quan hệ notification với user
+### Nâng cao - Thong ke xu hưong theo chủ đề
+- [ ] Tạo 1 cột `trending` cho bảng `topic`
+- [ ] Server DB call py func truyền vào tất cả các topic, AI thống kê ra các topic xu hướng trả về list - đầu list là xu hướng nhất,...
+- [ ] Lưu vào DB ở cột `trending`
 
-### Thong ke xu hưong theo chủ đề
+### Nâng cao - Chấm điem paper đang đọc
 
-- [ ] Schema lưu mapping paper-topic
-- [ ] View/query phục vụ thống kê theo chủ đề
-- [ ] Index phục vụ thống kê theo thời gian
-
-### Chấm điem paper đang đọc
-
-- [ ] Bảng lưu điểm paper của user
-- [ ] Ràng buộc mỗi user chấm một paper một lần
-- [ ] Cột thang điểm/rating
+- [ ] Tạo 1 bảng `paper_ratings`
+- [ ] Cột `user_ID`
+- [ ] Cột `paper_ID`
+- [ ] Cột `rating`
 
 ---
 
@@ -377,11 +369,11 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 
 ### Thêm, sửa, xoa chủ đề theo dõi
 
-- [ ] Chuẩn hóa/gợi ý tên chủ đề nếu cần
+- Không cố
 
 ### Tự động lấy paper mới theo chủ đề
 
-- [ ] Hỗ trợ mở rộng keyword/topic cho crawler nếu cần
+- Không có
 
 ### Lưu thông tin paper: tiêu đề, abstract, tác giả, ngày công bố, link
 
@@ -401,11 +393,7 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 
 ### Tim kiếm, lọc paper theo từ khoa hoặc chủ đề
 
-- [x] Search router theo keyword
-- [x] Search theo `title`
-- [x] Search theo `abstract`
-- [x] Search theo `authors`
-- [ ] Filter theo chủ đề
+- Không có
 
 ### Xem chi tiết paper
 
@@ -415,31 +403,31 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 
 - Không có hạng mục AI riêng.
 
-### Gợi ý paper liên quan
+### Nâng cao - Gợi ý paper liên quan
 
-- [x] Endpoint/logic gợi ý paper liên quan
-- [x] Gợi ý dựa trên keyword trong title
-- [x] Gợi ý dựa trên author
+- Không có
 
-### Phát hiện paper trùng hoặc gần giống
+### Nâng cao - Phát hiện paper trùng hoặc gần giống
 
-- [x] Hàm `_build_word_freq`
-- [x] Hàm `_cosine_similarity`
-- [x] Hàm `check_duplicate`
-- [x] Endpoint/logic check duplicate
-- [x] Phân loại trùng hoàn toàn/gần giống/khác nhau theo similarity
+- Không có
 
-### Gửi thong bao khi co paper mới
+### Nâng cao - Gửi thong bao khi co paper mới
 
-- [ ] AI hỗ trợ tóm tắt nội dung thông báo nếu cần
+- Không có
 
-### Thong ke xu hưong theo chủ đề
+### Nâng cao - Thong ke xu hưong theo chủ đề
 
-- [ ] AI phân tích/gợi ý xu hướng theo chủ đề nếu cần
+- [ ] Tạo 1 py func dùng AI phân tích/gợi ý xu hướng theo chủ đề - Nhận vào 1 list các title topic -> trả ra list title topic đã sắp xếp theo thứ tự xu hướng
 
-### Chấm điem paper đang đọc
+### Nâng cao - Chấm điem paper đang đọc
 
-- [ ] AI chấm điểm paper dựa trên abstract/summary nếu cần
+- Không có
+
+### Review + merge code
+- [ ]
+
+### Docs
+- [ ] Vẽ sơ đồ ERD cho database
 
 ---
 

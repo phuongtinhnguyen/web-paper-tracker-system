@@ -271,63 +271,39 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 
 ### Đăng ký, đăng nhập
 
-- [x] Bảng `users`
-- [x] Cột `email` unique
-- [x] Cột `hashed_password`
-- [x] Cột `full_name`
+- [x]
 
 ### Thêm, sửa, xoa chủ đề theo dõi
 
-- [x] Bảng `topics`
-- [x] Bảng `user_topics`
-- [x] Quan hệ many-to-many giữa users và topics
+- [x]
 
 ### Tự động lấy paper mới theo chủ đề
 
-- [x] Bảng `papers` để lưu paper crawl được
-- [x] Cột `arxiv_id` unique để tránh trùng paper theo arXiv ID
-- [ ] Tự độngc cập nhật data của chủ đề mới tối thiểu 1 ngày 2 lần
-- [ ] Bảng/quan hệ map paper với topic crawl được
-- [ ] Bảng lưu trạng thái lịch sử crawler
+- [x]
 
 ### Lưu thông tin paper: tiêu đề, abstract, tác giả, ngày công bố, link
 
-- [x] Cột `title`
-- [x] Cột `abstract`
-- [x] Cột `authors`
-- [x] Cột `published_date`
-- [x] Cột `pdf_url`
-- [x] Cột `arxiv_id`
+- [x]
 
 ### Tom tắt ngắn ý chính của paper từ abstract
 
-- [x] Cột `summary` trong bảng `papers`
+- [x] 
 
 ### Hien thị danh sách paper mới
 
-- [x] Cột `created_at`
-- [x] Cột `published_date`
-- [ ] Index tối ưu sort/filter danh sách paper mới
+- [x]
 
 ### Tim kiếm, lọc paper theo từ khoa hoặc chủ đề
 
-- [x] Field `title` phục vụ search
-- [x] Field `abstract` phục vụ search
-- [x] Field `authors` phục vụ search
-- [ ] Field hoặc quan hệ phục vụ filter theo chủ đề của paper
-- [ ] Index tối ưu search keyword
+- [x]
 
 ### Xem chi tiết paper
 
-- [x] Primary key `papers.id`
-- [x] Các field metadata paper đầy đủ cho detail page
+- [x]
 
 ### Luu paper yêu thích
 
-- [x] Bảng `favorites`
-- [x] Composite primary key `user_id`, `paper_id`
-- [x] Foreign key tới `users`
-- [x] Foreign key tới `papers`
+- [x]
 
 ### Nâng cao - Gợi ý paper liên quan
 - [ ] Bảng `related_papers`

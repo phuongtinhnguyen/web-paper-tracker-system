@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // Cấu hình base URL của backend. Đổi lại cho phù hợp với môi trường của bạn.
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
 
 const api = axios.create({
   baseURL: BASE_URL,

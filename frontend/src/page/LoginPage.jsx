@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import backgroundImg from '../assets/background.jpg';
 import SuccessModal from '../components/SuccessModal';
 import ErrorModal from '../components/ErrorModal';
-import { login } from '../services/api';
+import { login } from '../services/Api';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');

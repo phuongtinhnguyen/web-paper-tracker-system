@@ -6,11 +6,11 @@ export default function PaperCard({ paper, onToggleFavorite, isFavorite }) {
   const [showModal, setShowModal] = useState(false);
 
   // Xử lý logic parse danh sách tác giả
-  let authors = [];
+  let author = [];
   try {
-    authors = typeof paper.authors === 'string' ? JSON.parse(paper.authors) : paper.authors;
+    author = typeof paper.author === 'string' ? JSON.parse(paper.author) : paper.author;
   } catch {
-    authors = [paper.authors];
+    author = [paper.author];
   }
 
   return (
@@ -61,7 +61,7 @@ export default function PaperCard({ paper, onToggleFavorite, isFavorite }) {
           <div className="flex items-center gap-2 text-[10px] text-gray-500 uppercase tracking-tight">
             <Users size={12} className="text-green-600 flex-shrink-0" />
             <span className="truncate font-semibold">
-              {Array.isArray(authors) ? authors.join(", ") : authors}
+              {Array.isArray(author) ? author.join(", ") : author}
             </span>
           </div>
           <div className="flex items-center gap-2 text-[10px] text-gray-400">
@@ -76,7 +76,7 @@ export default function PaperCard({ paper, onToggleFavorite, isFavorite }) {
         isOpen={showModal} 
         onClose={() => setShowModal(false)} 
         paper={paper}
-        authors={authors}
+        authors={author}
       />
     </>
   );

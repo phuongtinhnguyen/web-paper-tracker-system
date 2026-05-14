@@ -9,8 +9,8 @@ POST http://localhost:8000/api/v1/auth/register
 Content-Type: application/json
 
 {
-  "username": "Test User",
-  "email": "test@gmail.com",
+  "username": "Test User2",
+  "email": "test2@gmail.com",
   "password": "123456"
 }
 
@@ -26,3 +26,32 @@ Content-Type: application/json
 ### Me
 GET http://localhost:8000/api/v1/auth/me
 Authorization: Bearer <token>
+
+
+
+
+### Get topics
+GET http://localhost:8000/api/v1/topics
+Authorization: Bearer <access_token>
+
+### Create topic
+POST http://localhost:8000/api/v1/topics
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "name": "Machine Learning"
+}
+
+### Update topic
+PUT http://localhost:8000/api/v1/topics/1
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "name": "Deep Learning"
+}
+
+### Delete topic
+DELETE http://localhost:8000/api/v1/topics/1
+Authorization: Bearer <access_token>

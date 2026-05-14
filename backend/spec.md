@@ -921,137 +921,202 @@ Crawler APIs nên dùng cho môi trường dev/admin, không mở public cho use
 
 # 10. Backend Feature Tickets
 
-Ticket có `(*)` là ưu tiên vì FE/DB/AI đã có nền tương ứng và chủ yếu cần BE để kết nối.
+Phần này được đồng bộ theo **BE Checklist** trong `spec.md` tổng thể. Ticket có `(*)` là nhóm ưu tiên vì FE/DB/AI đã có nền tương ứng hoặc cần BE để nối luồng chính.
+
+## Sprint/Core Tickets
+
+### 1. BE: Đăng ký, đăng nhập (*)
+
+- [x] API đăng ký: `POST /api/v1/auth/register`
+- [x] API đăng nhập: `POST /api/v1/auth/login`
+- [ ] Sửa API đăng ký lại bổ sung thêm giờ tạo trong response nếu FE cần hiển thị
+- [ ] Hash password
+- [ ] JWT access token
+- [ ] Middleware bảo vệ protected API
+- [ ] API logout hoặc cơ chế logout phía client
+
+Ghi chú:
+
+- `username` map vào DB field `users.full_name`.
+- Logout core có thể xử lý phía client bằng cách xóa token.
+
+### 2. BE: Thêm, sửa, xóa chủ đề theo dõi (*)
+
+- [ ] API lấy danh sách chủ đề theo dõi: `GET /api/v1/topics`
+- [ ] API thêm chủ đề theo dõi: `POST /api/v1/topics`
+- [ ] API sửa chủ đề theo dõi: `PUT /api/v1/topics/:id` - Low priority
+- [ ] API xóa/bỏ theo dõi chủ đề: `DELETE /api/v1/topics/:id`
+- [ ] Validate tên chủ đề
+
+Ghi chú:
+
+- Dùng bảng `topics` và `user_topics`.
+- Các route topic là protected API, cần Bearer token.
+
+### 3. BE: Tự động lấy paper mới theo chủ đề (*)
+
+- [ ] API lấy đầy đủ papers của một chủ đề, sắp xếp theo ngày tạo gần nhất
+- [ ] API trigger crawler thủ công cho môi trường dev
+
+Gợi ý endpoint:
 
 ```txt
-BE Tickets
-|-- 1. BE: Đăng ký, đăng nhập (*) - DONE CORE
-|   |-- BE: Setup Express app, server, env config (*) - DONE
-|   |-- BE: Setup database connection tới PostgreSQL/Neon (*) - DONE
-|   |-- BE: Tạo auth routes: POST /auth/register, POST /auth/login (*) - DONE
-|   |-- BE: Hash password bằng bcrypt (*) - DONE
-|   |-- BE: Kiểm tra email trùng khi đăng ký (*) - DONE
-|   |-- BE: Verify password khi đăng nhập (*) - DONE
-|   |-- BE: Generate JWT access token (*) - DONE
-|   |-- BE: Tạo auth middleware kiểm tra Bearer token (*) - DONE
-|   |-- BE: Chuẩn hóa response/error cho FE (*) - DONE
-|   |-- BE: Tạo GET /auth/me - DONE
-|   |-- BE: Logout bằng cách xóa token phía client - ACCEPTED
-|   |-- BE: Refresh token - OPTIONAL
-|   |-- BE: Rate limit login/register - OPTIONAL
-|
-|-- 2. BE: Thêm, sửa, xoa chủ đề theo dõi (*)
-|   |-- BE: Tạo topic routes (*)
-|   |-- BE: GET /topics lấy danh sách chủ đề user đang theo dõi (*)
-|   |-- BE: POST /topics thêm chủ đề (*)
-|   |-- BE: PUT /topics/:id sửa tên chủ đề (*)
-|   |-- BE: DELETE /topics/:id xóa/bỏ theo dõi chủ đề (*)
-|   |-- BE: Liên kết user-topic qua bảng user_topics (*)
-|   |-- BE: Validate tên chủ đề (*)
-|
-|-- 3. BE: Lưu thông tin paper: tiêu đề, abstract, tác giả, ngày công bố, link (*)
-|   |-- BE: Tạo paper repository/service (*)
-|   |-- BE: Lưu title (*)
-|   |-- BE: Lưu abstract (*)
-|   |-- BE: Lưu authors (*)
-|   |-- BE: Lưu published_date (*)
-|   |-- BE: Lưu pdf_url (*)
-|   |-- BE: Lưu arxiv_id (*)
-|   |-- BE: Chuẩn hóa paper response trả về cho FE (*)
-|
-|-- 4. BE: Hien thị danh sách paper mới (*)
-|   |-- BE: Tạo GET /papers (*)
-|   |-- BE: Hỗ trợ pagination: page, limit (*)
-|   |-- BE: Sort theo published_date hoặc created_at mới nhất (*)
-|   |-- BE: Trả metadata pagination (*)
-|   |-- BE: Chuẩn hóa danh sách paper cho PaperCard FE (*)
-|
-|-- 5. BE: Tim kiếm, lọc paper theo từ khoa hoặc chủ đề (*)
-|   |-- BE: Tạo GET /papers/search (*)
-|   |-- BE: Search theo title (*)
-|   |-- BE: Search theo abstract (*)
-|   |-- BE: Search theo authors (*)
-|   |-- BE: Hỗ trợ pagination (*)
-|   |-- BE: Validate query params (*)
-|   |-- BE: Filter theo topic nếu có mapping paper-topic
-|
-|-- 6. BE: Luu paper yêu thích (*)
-|   |-- BE: Tạo POST /papers/favorite/:id (*)
-|   |-- BE: Tạo DELETE /papers/favorite/:id (*)
-|   |-- BE: Tạo GET /favorites (*)
-|   |-- BE: Kiểm tra paper tồn tại trước khi lưu (*)
-|   |-- BE: Chặn lưu trùng favorite (*)
-|   |-- BE: Chỉ cho user thao tác favorite của chính mình (*)
-|
-|-- 7. BE: Tom tắt ngắn ý chính của paper từ abstract (*)
-|   |-- BE: Tạo endpoint POST /papers/:id/summarize (*)
-|   |-- BE: Lấy abstract của paper từ database (*)
-|   |-- BE: Gọi AI summary service/module (*)
-|   |-- BE: Lưu summary vào papers.summary (*)
-|   |-- BE: Trả summary về FE (*)
-|   |-- BE: Xử lý lỗi khi AI service lỗi hoặc thiếu abstract (*)
-|
-|-- 8. BE: Gợi ý paper liên quan (*)
-|   |-- BE: Tạo GET /papers/:id/related (*)
-|   |-- BE: Lấy paper gốc theo id (*)
-|   |-- BE: Gọi AI/Search related logic (*)
-|   |-- BE: Loại paper gốc khỏi kết quả (*)
-|   |-- BE: Giới hạn số lượng paper gợi ý (*)
-|   |-- BE: Hoặc query related theo keyword title/authors
-|
-|-- 9. BE: Phát hiện paper trùng hoặc gần giống (*)
-|   |-- BE: Tạo POST /papers/check-duplicate (*)
-|   |-- BE: Nhận title và abstract từ request (*)
-|   |-- BE: Gọi AI duplicate detection (*)
-|   |-- BE: Trả is_duplicate (*)
-|   |-- BE: Trả similarity (*)
-|   |-- BE: Trả matched_paper nếu có (*)
-|   |-- BE: Dùng check này trong crawler trước khi lưu paper nếu cần
-|
-|-- 10. BE: Xem chi tiết paper
-|   |-- BE: Tạo GET /papers/:id (*)
-|   |-- BE: Trả đầy đủ title, abstract, authors, published_date, pdf_url, summary (*)
-|   |-- BE: Trả 404 nếu paper không tồn tại (*)
-|   |-- BE: Trả trạng thái favorite của user nếu đã đăng nhập
-|   |-- BE: Ghi nhận lịch sử đọc nếu feature history được dùng
-|
-|-- 11. BE: Tự động lấy paper mới theo chủ đề
-|   |-- BE: Logic tránh lưu trùng paper theo arxiv_id (*)
-|   |-- BE: Tạo crawler service gọi arXiv API
-|   |-- BE: Lấy danh sách topic cần crawl
-|   |-- BE: Crawl paper theo từng topic
-|   |-- BE: Parse dữ liệu arXiv response
-|   |-- BE: Tạo scheduler chạy crawler định kỳ
-|   |-- BE: Tạo API trigger crawl thủ công cho dev
-|
-|-- 12. BE: Gửi thong bao khi co paper mới
-|   |-- BE: Tạo notification khi crawler lưu paper mới theo topic user follow
-|   |-- BE: Tạo notification model/table contract với DB
-|   |-- BE: Tạo GET /notifications
-|   |-- BE: Tạo PATCH /notifications/:id/read
-|   |-- BE: Tạo PATCH /notifications/read-all
-|   |-- BE: Trả unread_count cho FE
-|
-|-- 13. BE: Thong ke xu hưong theo chủ đề
-|   |-- BE: Tạo GET /stats/topics
-|   |-- BE: Thống kê số paper theo topic
-|   |-- BE: Thống kê paper theo mốc thời gian
-|   |-- BE: Hỗ trợ filter date range
-|   |-- BE: Trả dữ liệu phù hợp cho chart FE
-|   |-- BE: Tối ưu query thống kê nếu dữ liệu lớn
-|
-|-- 14. BE: Chấm điem paper đang đọc
-|   |-- BE: Tạo rating model/table contract với DB
-|   |-- BE: Tạo POST /papers/:id/rating
-|   |-- BE: Tạo GET /papers/:id/rating/me
-|   |-- BE: Validate thang điểm
-|   |-- BE: Cho phép update điểm đã chấm
-|   |-- BE: Tính average rating nếu cần
-|   |-- BE: Chỉ cho user chấm điểm khi đã đăng nhập
+GET  /api/v1/topics/:id/papers?page=1&limit=10
+POST /api/v1/crawler/run
 ```
 
----
+Ghi chú:
 
+- Crawler/scheduler thực tế có thể do DB/Crawler module phụ trách.
+- Backend cần cung cấp API để FE lấy paper theo chủ đề và dev có thể trigger crawl khi cần.
+
+### 4. BE: Lưu thông tin paper: tiêu đề, abstract, tác giả, ngày công bố, link (*)
+
+- [ ] API trả về tiêu đề, abstract, tác giả, ngày công bố, url paper
+
+Gợi ý response field:
+
+```txt
+title
+abstract
+authors
+published_date hoặc published_at
+pdf_url
+```
+
+### 5. BE: Tóm tắt ngắn ý chính của paper từ abstract (*)
+
+- [ ] API trả về bản tóm tắt một paper
+- [ ] Service gọi AI summary module
+- [ ] Lưu summary trả về vào database
+- [ ] Xử lý lỗi khi AI service thất bại
+
+Gợi ý endpoint:
+
+```txt
+POST /api/v1/papers/:id/summarize
+```
+
+### 6. BE: Hiển thị danh sách paper mới (*)
+
+- [ ] API lấy danh sách paper gần đây: lấy tất cả papers và sắp xếp theo gần đây
+- [ ] API lấy danh sách paper trong 2 ngày gần đây
+
+Gợi ý endpoint:
+
+```txt
+GET /api/v1/papers?page=1&limit=10&sort=recent
+GET /api/v1/papers?recent_days=2&page=1&limit=10
+```
+
+### 7. BE: Tìm kiếm, lọc paper theo từ khóa hoặc chủ đề (*)
+
+- [ ] API search theo title
+- [ ] API search theo abstract
+- [ ] API search theo authors
+
+Gợi ý endpoint đơn giản nhất:
+
+```txt
+GET /api/v1/papers/search?q=keyword&page=1&limit=10
+```
+
+Ghi chú:
+
+- Giai đoạn đơn giản chỉ cần search keyword bằng `title`, `abstract`, `authors`.
+- Filter theo chủ đề nên làm sau khi có mapping paper-topic ổn định.
+
+### 8. BE: Xem chi tiết paper (*)
+
+- [x] API trả về tiêu đề, abstract, tác giả, ngày công bố, url paper - làm theo checklist ở trên
+
+Gợi ý endpoint:
+
+```txt
+GET /api/v1/papers/:id
+```
+
+### 9. BE: Lưu paper yêu thích (*)
+
+- [ ] API lưu paper yêu thích
+- [ ] API bỏ lưu paper yêu thích
+- [ ] API lấy danh sách paper yêu thích
+
+Gợi ý endpoint:
+
+```txt
+POST   /api/v1/papers/favorite/:id
+DELETE /api/v1/papers/favorite/:id
+GET    /api/v1/favorites
+```
+
+## Advanced Tickets
+
+### 10. Nâng cao - Gợi ý paper liên quan
+
+- [ ] API lấy paper liên quan
+- [ ] Giới hạn số lượng paper gợi ý
+
+Gợi ý endpoint:
+
+```txt
+GET /api/v1/papers/:id/related?limit=5
+```
+
+### 11. Nâng cao - Phát hiện paper trùng hoặc gần giống
+
+- [ ] API lấy tên và id các paper trùng hoặc gần giống
+
+Gợi ý endpoint:
+
+```txt
+POST /api/v1/papers/check-duplicate
+```
+
+### 12. Nâng cao - Gửi thông báo khi có paper mới
+
+- [ ] Service tạo thông báo khi crawler có paper mới - check sau
+- [ ] API lấy danh sách thông báo - check sau
+- [ ] API đánh dấu thông báo đã đọc - check sau
+
+Gợi ý endpoint:
+
+```txt
+GET   /api/v1/notifications
+PATCH /api/v1/notifications/:id/read
+```
+
+### 13. Nâng cao - Thống kê xu hướng theo chủ đề
+
+- [ ] API lấy danh sách topic title trong bảng `trending`
+
+Gợi ý endpoint:
+
+```txt
+GET /api/v1/stats/topics/trends
+```
+
+### 14. Nâng cao - Chấm điểm paper đang đọc
+
+- [ ] API lưu điểm user đã chấm vào DB
+- [ ] API lấy điểm paper của user
+
+Gợi ý endpoint:
+
+```txt
+POST /api/v1/papers/:id/rating
+GET  /api/v1/papers/:id/rating/me
+```
+
+## Implementation Notes
+
+- Tất cả protected API phải dùng `auth.middleware.js` và đọc user từ `req.user.userId`.
+- Controller không query DB trực tiếp; luồng xử lý đi qua service và repository.
+- Repository dùng parameterized query qua `pg` để tránh SQL injection.
+- Response success/error giữ format thống nhất của backend.
+- Backend không tự migrate schema; mọi thay đổi bảng/cột cần thống nhất với module Database.
+
+---
 # 11. Development Order
 
 Nên phát triển theo thứ tự:

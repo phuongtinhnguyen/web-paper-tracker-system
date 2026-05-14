@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import backgroundImg from '../assets/background.jpg';
 import SuccessModal from '../components/SuccessModal';
 import ErrorModal from '../components/ErrorModal';
-import { login } from '../services/Api';
+import { login } from '../services/API';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -29,7 +29,7 @@ const LoginPage = () => {
 
       // Lưu token và thông tin user
       localStorage.setItem("access_token", access_token);
-      localStorage.setItem("username", user?.name || user?.email || "Người dùng");
+      localStorage.setItem("username", user?.username || user?.email || "Người dùng");
 
       setModalConfig({
         isOpen: true,

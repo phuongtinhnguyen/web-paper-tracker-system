@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom'; 
 import backgroundImg from '../assets/background.jpg'; 
-import SuccessModal from '../components/SuccessModal'; 
+import SuccessModal from '../components/SuccessModal';
+import ErrorModal from '../components/ErrorModal';
+import { register } from '../services/API';
 
 const RegisterPage = () => {
   const [email, setEmail] = useState('');
@@ -9,22 +11,40 @@ const RegisterPage = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   
   const navigate = useNavigate(); 
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
   e.preventDefault();
   
   if (password !== confirmPassword) {
-    alert("Mật khẩu xác nhận không khớp!");
+    setErrorMessage("Mật khẩu xác nhận không khớp!");
+    setShowErrorModal(true);
     return;
   }
 
-  
-  localStorage.setItem("username", username); 
+  setIsLoading(true);
 
-  console.log("Gửi yêu cầu đăng ký:", { email, username, password });
-  setShowModal(true); 
+  try {
+    const response = await register(username, email, password);
+    
+    // Backend trả về: { user: { id, email, username (là full_name), created_at } }
+    // Lưu ý: Backend dùng user.full_name cho trường username trong response
+    console.log("Đăng ký thành công:", response.data);
+    
+    setShowModal(true);
+  } catch (error) {
+    console.error("Lỗi đăng ký:", error);
+    // Backend dùng AppError trả về message, axios bọc trong error.response.data
+    const errorMsg = error.response?.data?.message || "Email đã tồn tại hoặc lỗi hệ thống.";
+    setErrorMessage(errorMsg);
+    setShowErrorModal(true);
+  } finally {
+    setIsLoading(false);
+  }
 };
 
   return (
@@ -95,9 +115,14 @@ const RegisterPage = () => {
           
           <button
             type="submit"
-            className="block mt-4 mx-auto w-11/12 !bg-green-600 hover:!bg-green-700 text-white text-[20px] font-bold py-4 rounded-xl transition duration-300 shadow-lg active:scale-[0.98]"
+            disabled={isLoading}
+            className={`block mt-4 mx-auto w-11/12 text-white text-[20px] font-bold py-4 rounded-xl transition duration-300 shadow-lg active:scale-[0.98] ${
+              isLoading 
+                ? '!bg-gray-400 cursor-not-allowed' 
+                : '!bg-green-600 hover:!bg-green-700'
+            }`}
           >
-            Đăng ký ngay
+            {isLoading ? 'Đang đăng ký...' : 'Đăng ký ngay'}
           </button>
         </form>
 
@@ -123,6 +148,12 @@ const RegisterPage = () => {
         title="Thành công!"
         message={`Chào mừng ${username}!\nTài khoản ${email} đã được tạo thành công.`}
         buttonText= "Đăng nhập ngay" 
+      />
+
+      <ErrorModal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        message={errorMessage}
       />
     </div>
   );

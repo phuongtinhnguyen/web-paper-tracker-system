@@ -1,5 +1,3 @@
-import React from 'react';
-
 const SuccessModal = ({ isOpen, onClose, title, message, buttonText = "OK" }) => {
   if (!isOpen) return null; // Nếu không mở thì không vẽ gì cả
 

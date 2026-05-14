@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // Cấu hình base URL của backend. Đổi lại cho phù hợp với môi trường của bạn.
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
+const BASE_URL = import.meta.env.VITE_API_URL = "http://localhost:8000/api/v1";
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -22,8 +22,8 @@ export const login = (email, password) =>
   api.post("/auth/login", { email, password });
 
 /** POST /auth/register  → { message } */
-export const register = (name, email, password) =>
-  api.post("/auth/register", { name, email, password });
+export const register = (username, email, password) =>
+  api.post("/auth/register", { username, email, password });
 
 /** POST /auth/forgot-password  → { message } */
 export const forgotPassword = (email) =>
@@ -41,6 +41,13 @@ export const getPapers = (params = {}) =>
 /** GET /papers/:id  → Paper */
 export const getPaperById = (id) =>
   api.get(`/papers/${id}`);
+
+/**
+ * GET /papers/search?q=keyword&page=1&limit=10
+ * → { data: Paper[], total: number, page: number, totalPages: number }
+ */
+export const searchPapers = (query, params = {}) =>
+  api.get("/papers/search", { params: { q: query, ...params } });
 
 // ── TOPICS ───────────────────────────────────────────────────────────────────
 

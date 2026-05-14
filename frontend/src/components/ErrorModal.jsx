@@ -1,4 +1,3 @@
-import React from 'react';
 
 const ErrorModal = ({ isOpen, onClose, title, message, buttonText = "OK" }) => {
   if (!isOpen) return null; 

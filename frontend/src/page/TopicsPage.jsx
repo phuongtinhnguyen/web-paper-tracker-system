@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import PaperCard from "../components/PaperCard";
 import { Loader2, LayoutGrid, ChevronLeft, ChevronRight, Hash } from "lucide-react";
-import { getTopics, getPapersByTopic, addFavorite, removeFavorite } from "../services/Api";
+import { getTopics, getPapersByTopic, addFavorite, removeFavorite } from "../services/API";
 
 export default function TopicPage() {
   const [topics, setTopics] = useState([]);
@@ -110,7 +110,7 @@ export default function TopicPage() {
           <div className="p-2 bg-green-100 text-green-600 rounded-lg">
             <LayoutGrid size={20} />
           </div>
-          <h2 className="text-2xl font-black text-gray-800 tracking-tight">Quản lý Topic</h2>
+          <h2 className="text-2xl font-black text-gray-800 tracking-tight">Quản lý chủ đề</h2>
         </div>
 
         <div className="flex flex-wrap gap-3">

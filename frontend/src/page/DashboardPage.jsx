@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Loader2,ChevronDown} from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, ChevronDown } from "lucide-react";
 import PaperCard from "../components/PaperCard";
-import { getPapers, addFavorite, removeFavorite } from "../services/Api";
+import { getPapers, searchPapers, addFavorite, removeFavorite } from "../services/API";
 import SearchBar from "../components/SearchBar";
 import { ListFilter } from "lucide-react";
 
-export default function DashboardPage() {
+export default function DashboardPage({ searchQuery }) {
   const [filter, setFilter] = useState("all");
   const [isOpenFilter, setIsOpenFilter] = useState(false); 
   const filterRef = useRef(null);
@@ -24,13 +24,16 @@ export default function DashboardPage() {
   const topicId = searchParams.get("topic");
 
   const prevTopicIdRef = useRef(topicId);
+  const prevSearchQueryRef = useRef(searchQuery);
 
   useEffect(() => {
     const isTopicChanged = prevTopicIdRef.current !== topicId;
-    const page = isTopicChanged ? 1 : currentPage;
+    const isSearchChanged = prevSearchQueryRef.current !== searchQuery;
+    const page = (isTopicChanged || isSearchChanged) ? 1 : currentPage;
     prevTopicIdRef.current = topicId;
+    prevSearchQueryRef.current = searchQuery;
 
-    if (isTopicChanged) {
+    if (isTopicChanged || isSearchChanged) {
         setCurrentPage(1);
     }
 
@@ -38,10 +41,16 @@ export default function DashboardPage() {
         setLoading(true);
         setError(null);
         try {
-            const params = { page, limit: postsPerPage, filter: filter };
-            if (topicId) params.topic_id = topicId;
-
-            const res = await getPapers(params);
+            // Nếu có search query thì dùng API search, ngược lại dùng API thường
+            let res;
+            if (searchQuery && searchQuery.trim()) {
+                res = await searchPapers(searchQuery, { page, limit: postsPerPage });
+            } else {
+                const params = { page, limit: postsPerPage, filter: filter };
+                if (topicId) params.topic_id = topicId;
+                res = await getPapers(params);
+            }
+            
             const result = res.data;
             const list = result.data ?? result;
 
@@ -51,7 +60,7 @@ export default function DashboardPage() {
                 result.totalPages ??
                 Math.ceil((result.total ?? list.length) / postsPerPage)
             );
-        } catch (err) {
+        } catch {
             setError("Không thể tải dữ liệu bài báo. Vui lòng thử lại sau.");
         } finally {
             setLoading(false);
@@ -59,7 +68,7 @@ export default function DashboardPage() {
     };
 
     fetchPapers();
-}, [currentPage, topicId, filter]);
+}, [currentPage, topicId, filter, searchQuery]);
 
   useEffect(() => {
       const handleClickOutside = (event) => {

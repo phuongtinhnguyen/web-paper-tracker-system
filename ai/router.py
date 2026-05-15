@@ -109,7 +109,7 @@ def check_duplicate_paper(
     Kiểm tra paper có trùng không.
     Body: { "title": "...", "abstract": "..." }
     """
-    from ai.summarizer import check_duplicate
+    from ai.paper_ai import check_duplicate
 
     title    = payload.get("title", "")
     abstract = payload.get("abstract", "")

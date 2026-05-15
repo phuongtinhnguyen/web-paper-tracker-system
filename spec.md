@@ -639,7 +639,7 @@ web-paper-tracker-system/
 |   |-- alembic/
 |
 |-- ai/
-|   |-- summarizer.py
+|   |-- paper_ai.py
 |   |-- run_summarizer_batch.py
 |   |-- router.py
 |   |-- requirements.txt

@@ -16,7 +16,7 @@ load_dotenv(DATABASE_DIR / ".env")
 load_dotenv(AI_DIR / ".env")
 
 from database import SessionLocal  # noqa: E402
-from summarizer import summarize_pending_papers  # noqa: E402
+from paper_ai import summarize_pending_papers  # noqa: E402
 
 
 def main():

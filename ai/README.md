@@ -97,7 +97,7 @@ Ghi chú:
 
 ```
 ai-service/
-├── summarizer.py   ← tóm tắt + phát hiện trùng
+├── paper_ai.py     ← tóm tắt + phát hiện trùng
 ├── run_summarizer_batch.py ← chạy batch tóm tắt paper chưa có summary
 ├── router.py       ← API tìm kiếm + gợi ý liên quan
 └── README.md       ← file này
@@ -109,7 +109,7 @@ ai-service/
 
 ### Yêu cầu
 
-- Python 3.10+
+- Python 3.10 - 3.12
 - PostgreSQL/Neon database đã có bảng `papers`
 - `DATABASE_URL` của database
 - `GROQ_API_KEY` để gọi Groq AI khi chạy summary
@@ -214,7 +214,7 @@ Cách này phù hợp khi test nhanh hoặc khi muốn gọi từ một script P
 ##### Tóm tắt một abstract
 
 ```python
-from summarizer import summarize_abstract
+from paper_ai import summarize_abstract
 
 abstract = "We propose a novel transformer-based method..."
 summary = summarize_abstract(abstract)
@@ -246,7 +246,7 @@ load_dotenv(ROOT_DIR / "database" / ".env")
 load_dotenv(ROOT_DIR / "ai" / ".env")
 
 from database import SessionLocal
-from summarizer import summarize_pending_papers
+from paper_ai import summarize_pending_papers
 
 db = SessionLocal()
 
@@ -267,12 +267,72 @@ Response mẫu:
 
 ### 2. Kiểm tra paper trùng hoặc gần giống
 
-#### Gọi function trực tiếp
+#### Cách 1: Chạy script test local
+
+Cách này dùng để kiểm tra nhanh logic duplicate checker bằng dữ liệu thật trong bảng `papers`.
+
+Chuẩn bị môi trường từ thư mục `ai/`:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\activate
+python --version
+pip install -r requirements.txt
+```
+
+Kiểm tra paper có `id = 1` có bị trùng với paper nào trong DB không:
+
+```powershell
+python run_duplicate_checker.py --paper-id 1 --exclude-self --threshold 0.3 --limit 10
+```
+
+Ý nghĩa tham số:
+
+- `--paper-id 1`: lấy title và abstract của paper id 1 làm dữ liệu đầu vào.
+- `--exclude-self`: không cho paper id 1 tự match chính nó.
+- `--threshold 0.3`: ngưỡng giống nhau tối thiểu, càng thấp càng dễ match.
+- `--limit 10`: trả tối đa 10 paper trùng hoặc gần giống.
+
+Response mẫu:
+
+```json
+{
+  "input": {
+    "paper_id": 1,
+    "title": "Transformer for Stock Prediction",
+    "threshold": 0.3,
+    "limit": 10,
+    "exclude_paper_id": 1
+  },
+  "result": {
+    "is_duplicate": true,
+    "match_count": 2,
+    "highest_similarity": 82.15,
+    "matches": [
+      {
+        "id": 5,
+        "title": "Deep Learning for Stock Prediction",
+        "pdf_url": "https://arxiv.org/pdf/2401.00005",
+        "similarity": 82.15,
+        "status": "Gần giống"
+      }
+    ]
+  }
+}
+```
+
+Test bằng title và abstract tự nhập:
+
+```powershell
+python run_duplicate_checker.py --title "Transformer for natural language processing" --abstract "This paper studies transformer models for language understanding." --threshold 0.3 --limit 5
+```
+
+#### Cách 2: Gọi function trực tiếp
 
 Có thể dùng chung phần cấu hình `sys.path`, `load_dotenv` và `SessionLocal` ở ví dụ trên, sau đó gọi function trực tiếp:
 
 ```python
-from summarizer import check_duplicate
+from paper_ai import check_duplicate
 
 result = check_duplicate(
     db,
@@ -560,13 +620,13 @@ similarity = dot_product(A, B) / (|A| × |B|)
 
 # Test tóm tắt
 python -c "
-from summarizer import summarize_abstract
+from paper_ai import summarize_abstract
 print(summarize_abstract('We propose a transformer for stock prediction.'))
 "
 
 # Test phát hiện trùng
 python -c "
-from summarizer import _build_word_freq, _cosine_similarity
+from paper_ai import _build_word_freq, _cosine_similarity
 a = _build_word_freq('transformer stock prediction deep learning')
 b = _build_word_freq('transformer stock prediction deep learning neural')
 print(round(_cosine_similarity(a, b)*100, 2), '%')

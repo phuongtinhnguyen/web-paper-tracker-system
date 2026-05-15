@@ -11,6 +11,10 @@ import {
   removeFavorite,
 } from "../services/API";
 
+function extractTopics(response) {
+  return response.data?.data?.topics ?? response.data?.topics ?? response.data ?? [];
+}
+
 export default function TrackingTopics() {
   const dropdownRef = useRef(null);
 
@@ -49,8 +53,8 @@ export default function TrackingTopics() {
           getTopics(),
           getTrackedTopics(),
         ]);
-        setAllTopics(allRes.data);
-        setFollowedTopics(trackedRes.data);
+        setAllTopics(extractTopics(allRes));
+        setFollowedTopics(extractTopics(trackedRes));
       } catch {
         setError("Không thể tải dữ liệu chủ đề.");
       } finally {
@@ -70,11 +74,16 @@ export default function TrackingTopics() {
           page: currentPage,
           limit: itemsPerPage,
         });
-        const result = res.data;
-        const list = result.data ?? result;
+        const result = res.data ?? {};
+        const list = result.data ?? [];
+        const pagination = result.pagination ?? {};
 
-        setPapers(list);
-        setTotalPages(result.totalPages ?? Math.ceil((result.total ?? list.length) / itemsPerPage));
+        setPapers(Array.isArray(list) ? list : []);
+        setTotalPages(
+          pagination.total_pages ??
+            result.totalPages ??
+            Math.ceil((pagination.total ?? result.total ?? list.length) / itemsPerPage)
+        );
       } catch {
         setError("Không thể tải bài báo.");
       } finally {

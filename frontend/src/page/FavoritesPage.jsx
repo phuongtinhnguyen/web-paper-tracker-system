@@ -24,14 +24,22 @@ export default function FavoritesPage() {
         const res = await getFavorites({ page: currentPage, limit: itemsPerPage });
         if (cancelled) return;
 
-        const result = res.data;
-        const list = result.data ?? result;
+        const result = res.data ?? {};
+        const list = result.data?.data || result.data || [];
+        const pagination = result.data?.pagination || result.pagination || {};
+        const totalItems =
+          pagination.total ??
+          result.data?.total ??
+          result.total ??
+          (Array.isArray(list) ? list.length : 0);
 
-        setFavorites(list);
-        setTotal(result.total ?? list.length);
+        setFavorites(Array.isArray(list) ? list : []);
+        setTotal(totalItems);
         setTotalPages(
-          result.totalPages ??
-            Math.ceil((result.total ?? list.length) / itemsPerPage)
+          pagination.total_pages ??
+            result.data?.totalPages ??
+            result.totalPages ??
+            Math.ceil(totalItems / itemsPerPage)
         );
       } catch {
         if (!cancelled) setError("Không thể tải danh sách yêu thích.");

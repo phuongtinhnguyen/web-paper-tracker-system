@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // Cấu hình base URL của backend. Đổi lại cho phù hợp với môi trường của bạn.
-const BASE_URL = import.meta.env.VITE_API_URL = "http://localhost:8000/api/v1";
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -33,7 +33,7 @@ export const forgotPassword = (email) =>
 
 /**
  * GET /papers?page=1&limit=5&topic_id=xxx&search=yyy
- * → { data: Paper[], total: number, page: number, totalPages: number }
+ * → { data: Paper[], pagination }
  */
 export const getPapers = (params = {}) =>
   api.get("/papers", { params });
@@ -44,7 +44,7 @@ export const getPaperById = (id) =>
 
 /**
  * GET /papers/search?q=keyword&page=1&limit=10
- * → { data: Paper[], total: number, page: number, totalPages: number }
+ * → { data: Paper[], pagination }
  */
 export const searchPapers = (query, params = {}) =>
   api.get("/papers/search", { params: { q: query, ...params } });
@@ -55,13 +55,13 @@ export const searchPapers = (query, params = {}) =>
 export const getTopics = () =>
   api.get("/topics");
 
-/** GET /topics/:id/papers?page=1&limit=6  → { data: Paper[], total, totalPages } */
+/** GET /papers?topic_id=:id&page=1&limit=5  → { data: Paper[], pagination } */
 export const getPapersByTopic = (topicId, params = {}) =>
-  api.get(`/topics/${topicId}/papers`, { params });
+  api.get("/papers", { params: { ...params, topic_id: topicId } });
 
 // ── FAVORITES ────────────────────────────────────────────────────────────────
 
-/** GET /favorites?page=1&limit=6  → { data: Paper[], total, totalPages } */
+/** GET /favorites?page=1&limit=5  → { data: Paper[], pagination } */
 export const getFavorites = (params = {}) =>
   api.get("/favorites", { params });
 
@@ -75,7 +75,7 @@ export const removeFavorite = (paperId) =>
 
 // ── HISTORY ──────────────────────────────────────────────────────────────────
 
-/** GET /history?page=1&limit=6&search=yyy  → { data: Paper[], total, totalPages } */
+/** GET /history?page=1&limit=5&search=yyy  → { data: Paper[], pagination } */
 export const getHistory = (params = {}) =>
   api.get("/history", { params });
 
@@ -89,16 +89,16 @@ export const clearHistory = () =>
 
 // ── TRACKED TOPICS ───────────────────────────────────────────────────────────
 
-/** GET /user/tracked-topics  → Topic[] */
+/** GET /user-topics  → Topic[] */
 export const getTrackedTopics = () =>
-  api.get("/user/tracked-topics");
+  api.get("/user-topics");
 
-/** POST /user/tracked-topics/:topicId  → { message } */
+/** POST /user-topics  → { topic } */
 export const trackTopic = (topicId) =>
-  api.post(`/user/tracked-topics/${topicId}`);
+  api.post("/user-topics", { topic_id: topicId });
 
-/** DELETE /user/tracked-topics/:topicId  → { message } */
+/** DELETE /user-topics/:topicId  → { topic_id } */
 export const untrackTopic = (topicId) =>
-  api.delete(`/user/tracked-topics/${topicId}`);
+  api.delete(`/user-topics/${topicId}`);
 
 export default api;

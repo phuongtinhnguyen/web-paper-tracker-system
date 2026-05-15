@@ -3,6 +3,10 @@ import PaperCard from "../components/PaperCard";
 import { Loader2, LayoutGrid, ChevronLeft, ChevronRight, Hash } from "lucide-react";
 import { getTopics, getPapersByTopic, addFavorite, removeFavorite } from "../services/API";
 
+function extractTopics(response) {
+  return response.data?.data?.topics ?? response.data?.topics ?? response.data ?? [];
+}
+
 export default function TopicPage() {
   const [topics, setTopics] = useState([]);
   const [selectedTopic, setSelectedTopic] = useState(null);
@@ -25,7 +29,7 @@ export default function TopicPage() {
       setLoadingTopics(true);
       try {
         const res = await getTopics();
-        setTopics(res.data);
+        setTopics(extractTopics(res));
       } catch {
         setError("Không thể tải danh sách chủ đề.");
       } finally {
@@ -46,12 +50,17 @@ export default function TopicPage() {
           page: currentPage,
           limit: postsPerPage,
         });
-        const result = res.data;
-        const list = result.data ?? result;
+        const result = res.data ?? {};
+        const list = result.data ?? [];
+        const pagination = result.pagination ?? {};
 
-        setPapers(list);
-        setTotal(result.total ?? list.length);
-        setTotalPages(result.totalPages ?? Math.ceil((result.total ?? list.length) / postsPerPage));
+        setPapers(Array.isArray(list) ? list : []);
+        setTotal(pagination.total ?? result.total ?? list.length);
+        setTotalPages(
+          pagination.total_pages ??
+            result.totalPages ??
+            Math.ceil((pagination.total ?? result.total ?? list.length) / postsPerPage)
+        );
       } catch {
         setError("Không thể tải bài báo.");
       } finally {

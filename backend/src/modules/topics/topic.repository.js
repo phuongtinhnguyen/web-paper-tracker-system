@@ -1,26 +1,25 @@
 const { query, transaction } = require("../../config/db");
 
-async function findTopicByName(name) {
+async function getAllTopics() {
   const result = await query(
     `SELECT id, name
      FROM topics
-     WHERE LOWER(name) = LOWER($1)
+     ORDER BY id ASC`
+  );
+
+  return result.rows;
+}
+
+async function findTopicById(topicId) {
+  const result = await query(
+    `SELECT id, name
+     FROM topics
+     WHERE id = $1
      LIMIT 1`,
-    [name]
+    [topicId]
   );
 
   return result.rows[0] || null;
-}
-
-async function createTopic(name) {
-  const result = await query(
-    `INSERT INTO topics (name)
-     VALUES ($1)
-     RETURNING id, name`,
-    [name]
-  );
-
-  return result.rows[0];
 }
 
 async function findUserTopic(userId, topicId) {
@@ -42,7 +41,7 @@ async function getUserTopics(userId) {
      FROM user_topics ut
      JOIN topics t ON t.id = ut.topic_id
      WHERE ut.user_id = $1
-     ORDER BY t.name ASC`,
+     ORDER BY t.id ASC`,
     [userId]
   );
 
@@ -91,8 +90,8 @@ async function replaceUserTopic(userId, oldTopicId, newTopicId) {
 }
 
 module.exports = {
-  findTopicByName,
-  createTopic,
+  getAllTopics,
+  findTopicById,
   findUserTopic,
   getUserTopics,
   followTopic,

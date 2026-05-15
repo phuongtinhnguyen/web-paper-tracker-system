@@ -1,16 +1,10 @@
 const AppError = require("../../utils/appError");
 const topicRepository = require("./topic.repository");
 
-async function getOrCreateTopic(name) {
-  const normalizedName = name.trim();
+async function getAllTopics() {
+  const topics = await topicRepository.getAllTopics();
 
-  let topic = await topicRepository.findTopicByName(normalizedName);
-
-  if (!topic) {
-    topic = await topicRepository.createTopic(normalizedName);
-  }
-
-  return topic;
+  return { topics };
 }
 
 async function getMyTopics(userId) {
@@ -19,8 +13,12 @@ async function getMyTopics(userId) {
   return { topics };
 }
 
-async function createMyTopic(userId, { name }) {
-  const topic = await getOrCreateTopic(name);
+async function followMyTopic(userId, { topic_id: topicId }) {
+  const topic = await topicRepository.findTopicById(topicId);
+
+  if (!topic) {
+    throw new AppError("Topic not found", 404);
+  }
 
   const existingFollow = await topicRepository.findUserTopic(userId, topic.id);
 
@@ -33,26 +31,36 @@ async function createMyTopic(userId, { name }) {
   return { topic };
 }
 
-async function updateMyTopic(userId, topicId, { name }) {
-  const currentTopic = await topicRepository.findUserTopic(userId, topicId);
+async function updateMyTopic(userId, currentTopicId, { topic_id: newTopicId }) {
+  const currentTopic = await topicRepository.findUserTopic(
+    userId,
+    currentTopicId
+  );
 
   if (!currentTopic) {
     throw new AppError("Topic not found", 404);
   }
 
-  const newTopic = await getOrCreateTopic(name);
+  const newTopic = await topicRepository.findTopicById(newTopicId);
 
-  if (newTopic.id === topicId) {
+  if (!newTopic) {
+    throw new AppError("Topic not found", 404);
+  }
+
+  if (newTopic.id === currentTopicId) {
     return { topic: newTopic };
   }
 
-  const alreadyFollowed = await topicRepository.findUserTopic(userId, newTopic.id);
+  const alreadyFollowed = await topicRepository.findUserTopic(
+    userId,
+    newTopic.id
+  );
 
   if (alreadyFollowed) {
     throw new AppError("Topic already followed", 409);
   }
 
-  await topicRepository.replaceUserTopic(userId, topicId, newTopic.id);
+  await topicRepository.replaceUserTopic(userId, currentTopicId, newTopic.id);
 
   return { topic: newTopic };
 }
@@ -68,8 +76,9 @@ async function deleteMyTopic(userId, topicId) {
 }
 
 module.exports = {
+  getAllTopics,
   getMyTopics,
-  createMyTopic,
+  followMyTopic,
   updateMyTopic,
   deleteMyTopic,
 };

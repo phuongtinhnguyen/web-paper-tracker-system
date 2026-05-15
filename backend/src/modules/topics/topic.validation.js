@@ -1,12 +1,11 @@
 const { z } = require("zod");
 
-const topicBodySchema = z.object({
+const followTopicBodySchema = z.object({
   body: z.object({
-    name: z
-      .string()
-      .trim()
-      .min(1, "Topic name is required")
-      .max(100, "Topic name must be at most 100 characters"),
+    topic_id: z.coerce
+      .number()
+      .int()
+      .positive("Topic id must be a positive integer"),
   }),
   query: z.object({}).optional(),
   params: z.object({}).optional(),
@@ -20,13 +19,12 @@ const topicParamsSchema = z.object({
   }),
 });
 
-const updateTopicSchema = z.object({
+const updateUserTopicSchema = z.object({
   body: z.object({
-    name: z
-      .string()
-      .trim()
-      .min(1, "Topic name is required")
-      .max(100, "Topic name must be at most 100 characters"),
+    topic_id: z.coerce
+      .number()
+      .int()
+      .positive("Topic id must be a positive integer"),
   }),
   query: z.object({}).optional(),
   params: z.object({
@@ -35,7 +33,7 @@ const updateTopicSchema = z.object({
 });
 
 module.exports = {
-  topicBodySchema,
+  followTopicBodySchema,
   topicParamsSchema,
-  updateTopicSchema,
+  updateUserTopicSchema,
 };

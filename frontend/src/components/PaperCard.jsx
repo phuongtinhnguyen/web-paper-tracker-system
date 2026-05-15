@@ -37,7 +37,7 @@ export default function PaperCard({ paper, onToggleFavorite, isFavorite }) {
             {paper.title}
           </button>
           
-          {/* Cụm nút Summary và Heart nằm kế nhau */}clear
+          {/* Cụm nút Summary và Heart nằm kế nhau */}
           <div className="flex items-center gap-0.5 flex-shrink-0 -mt-1">
             <button
               onClick={() => setShowModal(true)}

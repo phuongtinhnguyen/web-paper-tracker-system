@@ -51,16 +51,21 @@ export default function DashboardPage({ searchQuery }) {
           res = await getPapers(params);
         }
 
-        const result = res.data;
+        const result = res.data ?? {};
         // Logic lấy data linh hoạt: Ưu tiên result.data.data, sau đó result.data, cuối cùng là result
         const actualData = result.data?.data || result.data || result;
-        const totalItems = result.data?.total || result.total || (Array.isArray(actualData) ? actualData.length : 0);
+        const pagination = result.data?.pagination || result.pagination || {};
+        const totalItems =
+          pagination.total ??
+          result.data?.total ??
+          result.total ??
+          (Array.isArray(actualData) ? actualData.length : 0);
         
         setPapers(Array.isArray(actualData) ? actualData : []);
         setTotal(totalItems);
         
         // Tính toán tổng số trang
-        const pages = Math.ceil(totalItems / postsPerPage);
+        const pages = pagination.total_pages ?? Math.ceil(totalItems / postsPerPage);
         setTotalPages(pages > 0 ? pages : 1);
 
       } catch (err) {

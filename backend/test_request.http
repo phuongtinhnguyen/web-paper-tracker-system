@@ -59,3 +59,12 @@ Content-Type: application/json
 ### Unfollow topic
 DELETE http://localhost:8000/api/v1/user-topics/1
 Authorization: Bearer <access_token>
+
+### Get all papers
+GET http://localhost:8000/api/v1/papers?page=1&limit=5&filter=all
+
+### Get recent papers
+GET http://localhost:8000/api/v1/papers?page=1&limit=5&filter=recent
+
+### Get papers in last 2 days
+GET http://localhost:8000/api/v1/papers?page=1&limit=5&filter=2days

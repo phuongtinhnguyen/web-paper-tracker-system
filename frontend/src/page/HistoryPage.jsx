@@ -2,7 +2,37 @@ import { useState, useEffect, useCallback } from "react";
 import PaperCard from "../components/PaperCard";
 import SuccessModal from "../components/SuccessModal";
 import { Trash2, Clock, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
-import { getHistory, removeHistory, clearHistory, addFavorite, removeFavorite } from "../services/API";
+import {
+  getHistory,
+  removeHistory,
+  clearHistory,
+  addFavorite,
+  removeFavorite,
+} from "../services/API";
+
+const ITEMS_PER_PAGE = 5;
+
+function parsePaginatedPapers(response) {
+  const result = response.data ?? {};
+  const list = result.data?.data || result.data || [];
+  const pagination = result.data?.pagination || result.pagination || {};
+  const total =
+    pagination.total ??
+    result.data?.total ??
+    result.total ??
+    (Array.isArray(list) ? list.length : 0);
+  const totalPages =
+    pagination.total_pages ??
+    result.data?.totalPages ??
+    result.totalPages ??
+    Math.ceil(total / ITEMS_PER_PAGE);
+
+  return {
+    list: Array.isArray(list) ? list : [],
+    total,
+    totalPages: totalPages > 0 ? totalPages : 1,
+  };
+}
 
 export default function HistoryPage({ searchQuery }) {
   const [historyList, setHistoryList] = useState([]);
@@ -11,63 +41,41 @@ export default function HistoryPage({ searchQuery }) {
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Phân trang
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
-  const itemsPerPage = 6;
 
-  const fetchHistory = useCallback(async (page = 1) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = { page, limit: itemsPerPage };
-      if (searchQuery) params.search = searchQuery;
-
-      const res = await getHistory(params);
-      const result = res.data;
-      const list = result.data ?? result;
-
-      setHistoryList(list);
-      setTotal(result.total ?? list.length);
-      setTotalPages(result.totalPages ?? Math.ceil((result.total ?? list.length) / itemsPerPage));
-    } catch {
-      setError("Không thể tải lịch sử nghiên cứu.");
-    } finally {
-      setLoading(false);
-    }
-  }, [searchQuery]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchFavorites = async () => {
+  const fetchHistory = useCallback(
+    async (page = 1) => {
       setLoading(true);
       setError(null);
+
       try {
-        const res = await getHistory({ page: currentPage, limit: itemsPerPage });
-        if (cancelled) return;
+        const params = { page, limit: ITEMS_PER_PAGE };
+        if (searchQuery?.trim()) params.search = searchQuery.trim();
 
-        const result = res.data;
-        const list = result.data ?? result;
+        const res = await getHistory(params);
+        const parsed = parsePaginatedPapers(res);
 
-        setFavorites(list);
-        setTotal(result.total ?? list.length);
-        setTotalPages(
-          result.totalPages ??
-            Math.ceil((result.total ?? list.length) / itemsPerPage)
-        );
+        setHistoryList(parsed.list);
+        setTotal(parsed.total);
+        setTotalPages(parsed.totalPages);
       } catch {
-        if (!cancelled) setError("Không thể tải danh sách yêu thích.");
+        setError("Không thể tải lịch sử nghiên cứu.");
       } finally {
-        if (!cancelled) setLoading(false);
+        setLoading(false);
       }
-    };
+    },
+    [searchQuery]
+  );
 
-    fetchFavorites();
-    return () => { cancelled = true; };
-  }, [currentPage]);
+  useEffect(() => {
+    fetchHistory(currentPage);
+  }, [currentPage, fetchHistory]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   const toggleFavorite = async (paper) => {
     const paperId = paper.id;
@@ -96,9 +104,16 @@ export default function HistoryPage({ searchQuery }) {
   const handleRemoveItem = async (id) => {
     try {
       await removeHistory(id);
-      const newPage = historyList.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage;
-      setCurrentPage(newPage);
-      fetchHistory(newPage);
+      const newPage =
+        historyList.length === 1 && currentPage > 1
+          ? currentPage - 1
+          : currentPage;
+
+      if (newPage === currentPage) {
+        fetchHistory(newPage);
+      } else {
+        setCurrentPage(newPage);
+      }
     } catch {
       setError("Không thể xóa mục khỏi lịch sử.");
     }
@@ -151,7 +166,11 @@ export default function HistoryPage({ searchQuery }) {
               <div key={p.id} className="relative group">
                 <div className="absolute top-[16px] right-[82px] z-20">
                   <button
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRemoveItem(p.id); }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleRemoveItem(p.id);
+                    }}
                     className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all bg-white border border-gray-50"
                   >
                     <Trash2 size={16} />

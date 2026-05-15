@@ -20,7 +20,7 @@ Các mục tiêu chính:
 - Quản lý chủ đề theo dõi của người dùng
 - Cung cấp API danh sách paper, chi tiết paper, search/filter
 - Lưu và trả thông tin favorite papers
-- Tích hợp AI summary, related papers và duplicate detection
+- Trả summary đã được AI batch ghi vào DB, đồng thời chuẩn bị related papers và duplicate detection
 - Tự động lấy paper mới theo chủ đề
 - Gửi thông báo khi có paper mới
 - Cung cấp API thống kê xu hướng và chấm điểm paper
@@ -827,16 +827,15 @@ Return access_token + username
 | User Topics | POST | `/api/v1/user-topics` | Theo dõi một chủ đề có sẵn bằng `topic_id` | Implemented |
 | User Topics | PUT | `/api/v1/user-topics/:id` | Đổi chủ đề đang theo dõi sang một chủ đề có sẵn khác | Implemented |
 | User Topics | DELETE | `/api/v1/user-topics/:id` | Xóa/bỏ theo dõi chủ đề | Implemented |
-| Papers | GET | `/api/v1/papers?page=1&limit=5&filter=all` | Lấy tất cả paper có phân trang từ bảng `papers` | Planned Core |
-| Papers | GET | `/api/v1/papers?page=1&limit=5&filter=recent` | Lấy paper gần đây từ bảng `papers` | Planned Core |
-| Papers | GET | `/api/v1/papers?page=1&limit=5&filter=2days` | Lấy paper trong 2 ngày gần đây từ bảng `papers` | Planned Core |
-| Papers | GET | `/api/v1/papers/search?q=keyword&page=1&limit=10` | Tìm kiếm paper theo title, abstract, authors | Planned Core |
-| Papers | GET | `/api/v1/topics/:id/papers?page=1&limit=10` | Lấy paper theo chủ đề | Planned Core |
-| Papers | GET | `/api/v1/papers/:id` | Lấy chi tiết paper | Planned Core |
-| Papers | POST | `/api/v1/papers/:id/summarize` | Tạo/lấy summary cho paper | Planned Core |
-| Favorites | GET | `/api/v1/favorites` | Lấy danh sách paper yêu thích | Planned Core |
-| Favorites | POST | `/api/v1/papers/favorite/:id` | Lưu paper yêu thích | Planned Core |
-| Favorites | DELETE | `/api/v1/papers/favorite/:id` | Bỏ lưu paper yêu thích | Planned Core |
+| Papers | GET | `/api/v1/papers?page=1&limit=5&filter=all` | Lấy tất cả paper có phân trang từ bảng `papers` | Implemented |
+| Papers | GET | `/api/v1/papers?page=1&limit=5&filter=recent` | Lấy paper gần đây từ bảng `papers` | Implemented |
+| Papers | GET | `/api/v1/papers?page=1&limit=5&filter=2days` | Lấy paper trong 2 ngày gần đây từ bảng `papers` | Implemented |
+| Papers | GET | `/api/v1/papers?page=1&limit=5&topic_id=1` | Lọc paper theo chủ đề bằng `papers.topic_id` | Implemented |
+| Papers | GET | `/api/v1/papers/search?q=keyword&page=1&limit=10` | Tìm kiếm paper theo title, abstract, authors | Implemented |
+| Papers | GET | `/api/v1/papers/:id` | Lấy chi tiết paper, bao gồm field `summary` từ DB | Implemented |
+| Favorites | GET | `/api/v1/favorites` | Lấy danh sách paper yêu thích | Implemented |
+| Favorites | POST | `/api/v1/papers/favorite/:id` | Lưu paper yêu thích | Implemented |
+| Favorites | DELETE | `/api/v1/papers/favorite/:id` | Bỏ lưu paper yêu thích | Implemented |
 | Crawler | POST | `/api/v1/crawler/run` | Trigger crawler thủ công cho dev/admin | Planned Core/Internal |
 | Related | GET | `/api/v1/papers/:id/related?limit=5` | Lấy paper liên quan từ bảng planned `related_papers` | Advanced |
 | Duplicate | GET | `/api/v1/papers/:id/matches?limit=5` | Lấy paper trùng/gần giống từ bảng planned `matching_papers` | Advanced |
@@ -860,7 +859,7 @@ Return access_token + username
 
 ```txt
 Implemented - đã có code trong backend hiện tại
-Planned     - nằm trong Backend Feature Tickets, chưa mặc định là đã chạy được
+Planned     - chưa có code backend hoàn chỉnh, chưa mặc định là đã chạy được
 Advanced    - tính năng nâng cao, làm sau core flow
 Future/Later - để sau, DB hiện chưa có bảng/cột tương ứng
 ```
@@ -1202,7 +1201,7 @@ Dữ liệu trả về mẫu:
 
 ---
 
-## 9.7 Paper APIs - Planned Core
+## 9.7 Paper APIs - Implemented + Planned Core
 
 Ghi chú theo DB hiện tại:
 
@@ -1367,15 +1366,14 @@ Dữ liệu trả về mẫu:
 }
 ```
 
-### 9.7.5 GET /api/v1/topics/:id/papers?page=1&limit=10
+### 9.7.5 GET /api/v1/papers?page=1&limit=5&topic_id=1
 
-Lấy papers của một chủ đề, sắp xếp theo ngày tạo gần nhất.
+Lọc paper theo một chủ đề bằng `papers.topic_id`, sắp xếp theo ngày gần nhất.
 
 Cách gửi:
 
 ```http
-GET /api/v1/topics/1/papers?page=1&limit=10
-Authorization: Bearer <access_token>
+GET /api/v1/papers?page=1&limit=5&topic_id=1
 ```
 
 Dữ liệu trả về mẫu:
@@ -1399,20 +1397,24 @@ Dữ liệu trả về mẫu:
   ],
   "pagination": {
     "page": 1,
-    "limit": 10,
+    "limit": 5,
     "total": 12,
-    "total_pages": 2
+    "total_pages": 3
   }
 }
 ```
 
 Ghi chú:
 
-- Endpoint này query trực tiếp theo `papers.topic_id`.
+- Đây là hướng tiếp cận hiện tại của backend để lấy paper theo chủ đề.
+- Backend không dùng endpoint riêng `/api/v1/topics/:id/papers` trong scope hiện tại.
+- Khác với `GET /api/v1/papers/:id`; endpoint này trả danh sách paper theo `topic_id`.
 
 ### 9.7.6 GET /api/v1/papers/:id
 
 Lấy chi tiết paper.
+
+`:id` trong endpoint này là `papers.id`, không phải `topics.id`.
 
 Cách gửi:
 
@@ -1442,29 +1444,21 @@ Dữ liệu trả về mẫu:
 }
 ```
 
-### 9.7.7 POST /api/v1/papers/:id/summarize
+### 9.7.7 Summary từ AI batch
 
-Gọi AI summary module, lưu kết quả vào `papers.summary`, và trả summary về FE.
+Backend không dùng API realtime `POST /api/v1/papers/:id/summarize` trong core flow hiện tại.
 
-Cách gửi:
+Luồng summary được chốt theo hướng batch:
 
-```http
-POST /api/v1/papers/1/summarize
-Authorization: Bearer <access_token>
+```txt
+Crawler thêm paper mới vào DB
+-> AI chạy python ai/run_summarizer_batch.py --batch-size 20
+-> AI gọi summarize_pending_papers(db, batch_size=20)
+-> AI lưu kết quả vào papers.summary
+-> Backend trả field summary qua GET /api/v1/papers và GET /api/v1/papers/:id
 ```
 
-Dữ liệu trả về mẫu:
-
-```json
-{
-  "success": true,
-  "message": "Summarize paper successfully",
-  "data": {
-    "paper_id": 1,
-    "summary": "Bài báo đề xuất một phương pháp dùng Transformer cho dự đoán chứng khoán..."
-  }
-}
-```
+Nếu `papers.summary` chưa có, API paper trả `summary: null`.
 
 ---
 
@@ -1865,237 +1859,7 @@ Dữ liệu trả về mẫu:
 
 ---
 
-# 10. Backend Feature Tickets
-
-Phần này được đồng bộ theo **BE Checklist** trong `spec.md` tổng thể. Ticket có `(*)` là nhóm ưu tiên vì FE/DB/AI đã có nền tương ứng hoặc cần BE để nối luồng chính.
-
-## Sprint/Core Tickets
-
-### 1. BE: Đăng ký, đăng nhập (*)
-
-- [x] API đăng ký: `POST /api/v1/auth/register`
-- [x] API đăng nhập: `POST /api/v1/auth/login`
-- [x] API đăng ký trả `created_at` trong response
-- [x] Hash password bằng `bcrypt`
-- [x] JWT access token
-- [x] Middleware bảo vệ protected API
-- [x] Cơ chế logout phía client: xóa token
-
-Ghi chú:
-
-- `username` map vào DB field `users.full_name`.
-- Logout core có thể xử lý phía client bằng cách xóa token.
-
-### 2. BE: Thêm, sửa, xóa chủ đề theo dõi (*)
-
-- [x] API lấy tất cả chủ đề có trong database cho combo box: `GET /api/v1/topics`
-- [x] API lấy danh sách chủ đề user đang theo dõi: `GET /api/v1/user-topics`
-- [x] API thêm chủ đề theo dõi bằng `topic_id`: `POST /api/v1/user-topics`
-- [x] API sửa chủ đề theo dõi bằng `topic_id` mới: `PUT /api/v1/user-topics/:id` - Low priority
-- [x] API xóa/bỏ theo dõi chủ đề: `DELETE /api/v1/user-topics/:id`
-- [x] Validate `topic_id`
-
-Ghi chú:
-
-- Dùng bảng `topics` và `user_topics`.
-- Các route topic là protected API, cần Bearer token.
-- User chỉ chọn topic có sẵn từ combo box, Backend không tạo topic mới từ input của user trong API theo dõi topic.
-
-### 3. BE: Tự động lấy paper mới theo chủ đề (*)
-
-- [ ] API lấy đầy đủ papers của một chủ đề, sắp xếp theo ngày tạo gần nhất
-- [ ] API trigger crawler thủ công cho môi trường dev
-
-Gợi ý endpoint:
-
-```txt
-GET  /api/v1/topics/:id/papers?page=1&limit=10
-POST /api/v1/crawler/run
-```
-
-Ghi chú:
-
-- Crawler/scheduler thực tế có thể do DB/Crawler module phụ trách.
-- Backend cần cung cấp API để FE lấy paper theo chủ đề và dev có thể trigger crawl khi cần.
-
-### 4. BE: Lưu thông tin paper: tiêu đề, abstract, tác giả, ngày công bố, link (*)
-
-- [ ] API lấy chi tiết paper -> trả về tiêu đề, abstract, tác giả, ngày công bố, url paper
-
-Gợi ý endpoint:
-```
-GET /api/v1/papers/:id
-```
-
-Gợi ý response field:
-
-```
-txt
-{
-  "success": true,
-  "message": "OK",
-  "data": {
-    "paper": {
-      "id": 1,
-      "arxiv_id": "2401.00001",
-      "title": "Paper title",
-      "abstract": "Paper abstract...",
-      "authors": ["Author A", "Author B"],
-      "published_date": "2026-05-12",
-      "pdf_url": "https://arxiv.org/pdf/2401.00001"
-    }
-  }
-}
-```
-
-### 5. BE: Tóm tắt ngắn ý chính của paper từ abstract (*)
-
-- [ ] API trả về bản tóm tắt một paper
-- [ ] Service gọi AI summary module
-- [ ] Lưu summary trả về vào database
-- [ ] Xử lý lỗi khi AI service thất bại
-
-Gợi ý endpoint:
-
-```txt
-POST /api/v1/papers/:id/summarize
-```
-
-### 6. BE: Hiển thị danh sách paper mới (*)
-
-- [ ] API lấy tất cả paper có phân trang
-- [ ] API lấy danh sách paper gần đây
-- [ ] API lấy danh sách paper trong 2 ngày gần đây
-
-Gợi ý endpoint:
-
-```txt
-GET /api/v1/papers?page=1&limit=5&filter=all
-GET /api/v1/papers?page=1&limit=5&filter=recent
-GET /api/v1/papers?page=1&limit=5&filter=2days
-```
-
-Ghi chú:
-
-- FE Dashboard hiện gửi query `filter` với các giá trị `all`, `recent`, `2days`.
-- Nếu lọc theo topic từ Dashboard, FE có thể gửi thêm `topic_id`.
-
-### 7. BE: Tìm kiếm, lọc paper theo từ khóa hoặc chủ đề (*)
-
-- [ ] API search theo title
-- [ ] API search theo abstract
-- [ ] API search theo authors
-
-Gợi ý endpoint đơn giản nhất:
-
-```txt
-GET /api/v1/papers/search?q=keyword&page=1&limit=10
-```
-
-Ghi chú:
-
-- Giai đoạn đơn giản chỉ cần search keyword bằng `title`, `abstract`, `authors`.
-- Filter theo chủ đề dùng trực tiếp cột `papers.topic_id` trong DB hiện tại.
-
-### 8. BE: Xem chi tiết paper (*)
-
-- [x] API trả về tiêu đề, abstract, tác giả, ngày công bố, url paper - làm theo checklist ở trên
-
-Gợi ý endpoint:
-
-```txt
-GET /api/v1/papers/:id
-```
-
-### 9. BE: Lưu paper yêu thích (*)
-
-- [ ] API lưu paper yêu thích
-- [ ] API bỏ lưu paper yêu thích
-- [ ] API lấy danh sách paper yêu thích
-
-Gợi ý endpoint:
-
-```txt
-POST   /api/v1/papers/favorite/:id
-DELETE /api/v1/papers/favorite/:id
-GET    /api/v1/favorites
-```
-
-## Advanced Tickets
-
-### 10. Nâng cao - Gợi ý paper liên quan
-
-- [ ] API lấy paper liên quan
-- [ ] Giới hạn số lượng paper gợi ý
-- [ ] Đọc dữ liệu từ bảng planned `related_papers`
-- [ ] Join `related_papers.related_paper_id` sang `papers.id`
-
-Gợi ý endpoint:
-
-```txt
-GET /api/v1/papers/:id/related?limit=5
-```
-
-### 11. Nâng cao - Phát hiện paper trùng hoặc gần giống
-
-- [ ] API lấy tên và id các paper trùng hoặc gần giống
-- [ ] Đọc dữ liệu từ bảng planned `matching_papers`
-- [ ] Python duplicate detection tạo dữ liệu vào `matching_papers`
-
-Gợi ý endpoint:
-
-```txt
-GET /api/v1/papers/:id/matches?limit=5
-```
-
-### 12. Nâng cao - Gửi thông báo khi có paper mới - làm sau
-
-- [ ] Service tạo thông báo khi crawler có paper mới - check sau
-- [ ] API lấy danh sách thông báo - làm sau
-- [ ] API đánh dấu thông báo đã đọc - làm sau
-- [ ] Thiết kế bảng `notifications` hoặc cơ chế event sau
-
-Gợi ý endpoint:
-
-```txt
-GET   /api/v1/notifications
-PATCH /api/v1/notifications/:id/read
-```
-
-### 13. Nâng cao - Thống kê xu hướng theo chủ đề
-
-- [ ] API lấy danh sách topic title theo cột planned `topics.trending`
-- [ ] AI/Python thống kê xu hướng và lưu kết quả vào `topics.trending`
-
-Gợi ý endpoint:
-
-```txt
-GET /api/v1/stats/topics/trends
-```
-
-### 14. Nâng cao - Chấm điểm paper đang đọc
-
-- [ ] API lưu điểm user đã chấm vào DB
-- [ ] API lấy điểm paper của user
-- [ ] Đọc/ghi bảng planned `paper_ratings(user_id, paper_id, rating)`
-
-Gợi ý endpoint:
-
-```txt
-POST /api/v1/papers/:id/rating
-GET  /api/v1/papers/:id/rating/me
-```
-
-## Implementation Notes
-
-- Tất cả protected API phải dùng `auth.middleware.js` và đọc user từ `req.user.userId`.
-- Controller không query DB trực tiếp; luồng xử lý đi qua service và repository.
-- Repository dùng parameterized query qua `pg` để tránh SQL injection.
-- Response success/error giữ format thống nhất của backend.
-- Backend không tự migrate schema; mọi thay đổi bảng/cột cần thống nhất với module Database.
-
----
-# 11. Development Order
+# 10. Development Order
 
 Nên phát triển theo thứ tự:
 
@@ -2108,7 +1872,7 @@ Nên phát triển theo thứ tự:
 6. Papers list/detail module
 7. Favorites module
 8. Search module
-9. AI summary integration
+9. AI summary batch integration
 10. Related papers
 11. Duplicate detection
 12. Crawler job
@@ -2126,7 +1890,7 @@ Lý do:
 
 ---
 
-# 12. Coding Rules
+# 11. Coding Rules
 
 ## Naming
 
@@ -2153,7 +1917,7 @@ Tất cả lỗi đi qua `error.middleware.js`.
 
 ---
 
-# 13. Definition of Done
+# 12. Definition of Done
 
 Một backend feature được xem là hoàn thành khi:
 

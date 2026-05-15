@@ -186,10 +186,16 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 
 ## BE Checklist
 
+### Backend core / health
+
+- [x] API kiểm tra server Express: `GET /api/v1/health`
+- [x] API kiểm tra kết nối database: `GET /api/v1/health/db`
+
 ### Đăng ký, đăng nhập
 
-- [x] API đăng ký
-- [x] API đăng nhập
+- [x] API đăng ký: `POST /api/v1/auth/register`
+- [x] API đăng nhập: `POST /api/v1/auth/login`
+- [x] API lấy thông tin user từ token: `GET /api/v1/auth/me`
 - [x] API đăng ký trả `created_at`
 - [x] Hash password bằng `bcrypt`
 - [x] JWT access token
@@ -207,39 +213,42 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 
 ### Tự động lấy paper mới theo chủ đề
 
-- [ ] API lấy đầy đủ papers của một chủ đề, sắp xếp theo ngày tạo gần nhất: `GET /api/v1/topics/:id/papers?page=1&limit=10`
+- [x] API lọc/lấy papers của một chủ đề bằng `topic_id`, sắp xếp theo ngày gần nhất: `GET /api/v1/papers?page=1&limit=5&topic_id=1`
 - [ ] API trigger crawler thủ công cho môi trường dev: `POST /api/v1/crawler/run`
 
 ### Lưu thông tin paper: tiêu đề, abstract, tác giả, ngày công bố, link
 
-- [ ] API trả về tiêu đề, abstract, tác giả, ngày công bố, url paper: `GET /api/v1/papers/:id`
+- [x] API danh sách paper trả về title, abstract, authors, published_date, pdf_url: `GET /api/v1/papers`
+- [x] API lấy chi tiết một paper theo id -  trả về tiêu đề, abstract, tác giả, ngày công bố, url paper: `GET /api/v1/papers/:id`
 
 ### Tom tắt ngắn ý chính của paper từ abstract
 
-- [ ] API trả về bản tóm tắt một paper: `POST /api/v1/papers/:id/summarize`
-- [ ] Service gọi AI summary module
-- [ ] Lưu summary trả về vào database
-- [ ] Xử lý lỗi khi AI service thất bại
+- [x] BE trả field `summary` từ DB trong API danh sách paper: `GET /api/v1/papers`
+- [x] BE trả field `summary` từ DB trong API chi tiết paper: `GET /api/v1/papers/:id`
+- [x] AI có batch function ghi summary vào DB: `summarize_pending_papers(db, batch_size=20)`
+- [x] Có script chạy batch summary: `python ai/run_summarizer_batch.py --batch-size 20`
+- [ ] Cấu hình lịch chạy batch sau khi crawler thêm paper mới - Low Priority
 
 ### Hien thị danh sách paper mới
 
-- [ ] API lấy tất cả paper có phân trang: `GET /api/v1/papers?page=1&limit=5&filter=all`
-- [ ] API lấy danh sách paper gần đây: `GET /api/v1/papers?page=1&limit=5&filter=recent`
-- [ ] API lấy danh sách paper trong 2 ngày gần đây: `GET /api/v1/papers?page=1&limit=5&filter=2days`
+- [x] API lấy tất cả paper có phân trang: `GET /api/v1/papers?page=1&limit=5&filter=all`
+- [x] API lấy danh sách paper gần đây: `GET /api/v1/papers?page=1&limit=5&filter=recent`
+- [x] API lấy danh sách paper trong 2 ngày gần đây: `GET /api/v1/papers?page=1&limit=5&filter=2days`
 
 ### Tim kiếm, lọc paper theo từ khoa hoặc chủ đề
 
-- [ ] API search chung theo `title`, `abstract`, `authors`: `GET /api/v1/papers/search?q=keyword&page=1&limit=10`
+- [x] API lọc paper theo chủ đề bằng `topic_id`: `GET /api/v1/papers?page=1&limit=5&topic_id=1`
+- [x] API search chung theo `title`, `abstract`, `authors`: `GET /api/v1/papers/search?q=keyword&page=1&limit=10`
 
 ### Xem chi tiết paper
 
-- [ ] API trả về tiêu đề, abstract, tác giả, ngày công bố, url paper: `GET /api/v1/papers/:id`
+- [x] API lấy chi tiết một paper theo id -  trả về tiêu đề, abstract, tác giả, ngày công bố, url paper: `GET /api/v1/papers/:id`
 
 ### Luu paper yêu thích
 
-- [ ] API lưu paper yêu thích: `POST /api/v1/papers/favorite/:id`
-- [ ] API bỏ lưu paper yêu thích: `DELETE /api/v1/papers/favorite/:id`
-- [ ] API lấy danh sách paper yêu thích: `GET /api/v1/favorites`
+- [x] API lưu paper yêu thích: `POST /api/v1/papers/favorite/:id`
+- [x] API bỏ lưu paper yêu thích: `DELETE /api/v1/papers/favorite/:id`
+- [x] API lấy danh sách paper yêu thích: `GET /api/v1/favorites`
 
 ### Nâng cao - Gợi ý paper liên quan
 
@@ -386,7 +395,11 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 
 ### Nâng cao - Phát hiện paper trùng hoặc gần giống
 
-- Không có
+- [x] Hàm `check_duplicate`
+- [x] Hàm `_build_word_freq`
+- [x] Hàm `_cosine_similarity`
+- [x] Hàm `check_duplicate` trả nhiều paper gần giống qua field `matches`
+- [ ] Lưu kết quả kiểm tra trùng vào bảng planned `matching_papers`
 
 ### Nâng cao - Gửi thong bao khi co paper mới
 
@@ -627,6 +640,7 @@ web-paper-tracker-system/
 |
 |-- ai/
 |   |-- summarizer.py
+|   |-- run_summarizer_batch.py
 |   |-- router.py
 |   |-- requirements.txt
 |   |-- README.md
@@ -884,16 +898,15 @@ Frontend và Backend thống nhất một base URL khi tích hợp.
 | User Topics | POST | `/api/v1/user-topics` | Theo dõi chủ đề có sẵn bằng `topic_id` | Implemented |
 | User Topics | PUT | `/api/v1/user-topics/:id` | Đổi chủ đề đang theo dõi | Implemented |
 | User Topics | DELETE | `/api/v1/user-topics/:id` | Bỏ theo dõi chủ đề | Implemented |
-| Papers | GET | `/api/v1/papers?page=1&limit=5&filter=all` | Lấy tất cả paper có phân trang | Planned Core |
-| Papers | GET | `/api/v1/papers?page=1&limit=5&filter=recent` | Lấy paper gần đây | Planned Core |
-| Papers | GET | `/api/v1/papers?page=1&limit=5&filter=2days` | Lấy paper trong 2 ngày gần đây | Planned Core |
-| Papers | GET | `/api/v1/papers/search?q=keyword&page=1&limit=10` | Search theo title, abstract, authors | Planned Core |
-| Papers | GET | `/api/v1/topics/:id/papers?page=1&limit=10` | Lấy paper theo chủ đề | Planned Core |
-| Papers | GET | `/api/v1/papers/:id` | Lấy chi tiết paper | Planned Core |
-| Papers | POST | `/api/v1/papers/:id/summarize` | Tạo/lấy summary cho paper | Planned Core |
-| Favorites | GET | `/api/v1/favorites` | Lấy paper yêu thích | Planned Core |
-| Favorites | POST | `/api/v1/papers/favorite/:id` | Lưu paper yêu thích | Planned Core |
-| Favorites | DELETE | `/api/v1/papers/favorite/:id` | Bỏ lưu paper yêu thích | Planned Core |
+| Papers | GET | `/api/v1/papers?page=1&limit=5&filter=all` | Lấy tất cả paper có phân trang | Implemented |
+| Papers | GET | `/api/v1/papers?page=1&limit=5&filter=recent` | Lấy paper gần đây | Implemented |
+| Papers | GET | `/api/v1/papers?page=1&limit=5&filter=2days` | Lấy paper trong 2 ngày gần đây | Implemented |
+| Papers | GET | `/api/v1/papers?page=1&limit=5&topic_id=1` | Lọc paper theo chủ đề bằng `papers.topic_id` | Implemented |
+| Papers | GET | `/api/v1/papers/search?q=keyword&page=1&limit=10` | Search theo title, abstract, authors | Implemented |
+| Papers | GET | `/api/v1/papers/:id` | Lấy chi tiết paper, bao gồm field `summary` từ DB | Implemented |
+| Favorites | GET | `/api/v1/favorites` | Lấy paper yêu thích | Implemented |
+| Favorites | POST | `/api/v1/papers/favorite/:id` | Lưu paper yêu thích | Implemented |
+| Favorites | DELETE | `/api/v1/papers/favorite/:id` | Bỏ lưu paper yêu thích | Implemented |
 | Crawler | POST | `/api/v1/crawler/run` | Trigger crawler thủ công cho dev/admin | Planned Core/Internal |
 | Related | GET | `/api/v1/papers/:id/related?limit=5` | Lấy paper liên quan từ bảng planned `related_papers` | Advanced |
 | Duplicate | GET | `/api/v1/papers/:id/matches?limit=5` | Lấy paper trùng/gần giống từ bảng planned `matching_papers` | Advanced |
@@ -1220,7 +1233,7 @@ DATABASE_URL=postgresql://<username>:<password>@<host>/<dbname>?sslmode=require
 ```bash
 cd ai
 pip install -r requirements.txt
-uvicorn router:app --reload
+python run_summarizer_batch.py --batch-size 20
 ```
 
 AI `.env`:

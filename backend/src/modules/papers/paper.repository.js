@@ -63,6 +63,54 @@ async function getPapers({ page, limit, filter, topic_id: topicId }) {
   };
 }
 
+async function getPaperById(id) {
+  const result = await query(
+    `SELECT id, arxiv_id, title, abstract, summary, authors,
+            published_date, pdf_url, created_at, topic_id
+     FROM papers
+     WHERE id = $1
+     LIMIT 1`,
+    [id]
+  );
+
+  return result.rows[0] || null;
+}
+
+async function searchPapers({ q, page, limit }) {
+  const offset = (page - 1) * limit;
+  const keyword = `%${q}%`;
+
+  const result = await query(
+    `SELECT id, arxiv_id, title, abstract, summary, authors,
+            published_date, pdf_url, created_at, topic_id
+     FROM papers
+     WHERE title ILIKE $1
+        OR abstract ILIKE $1
+        OR authors ILIKE $1
+     ORDER BY COALESCE(published_date, created_at) DESC, id DESC
+     LIMIT $2 OFFSET $3`,
+    [keyword, limit, offset]
+  );
+
+  const countResult = await query(
+    `SELECT COUNT(*)::int AS total
+     FROM papers
+     WHERE title ILIKE $1
+        OR abstract ILIKE $1
+        OR authors ILIKE $1`,
+    [keyword]
+  );
+
+  return {
+    papers: result.rows,
+    total: countResult.rows[0]?.total || 0,
+  };
+}
+
+
 module.exports = {
   getPapers,
+  getPaperById,
+  searchPapers,
 };
+

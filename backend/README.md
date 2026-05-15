@@ -132,7 +132,7 @@ npm start
 | `DATABASE_URL` | Yes | PostgreSQL/Neon connection string |
 | `JWT_SECRET` | Yes | Secret dùng để ký JWT |
 | `JWT_EXPIRES_IN` | No | Thời hạn JWT, default `7d` |
-| `AI_SERVICE_URL` | No | URL AI service, default `http://localhost:8001` |
+| `AI_SERVICE_URL` | No | URL AI service cho future integration; summary core hiện chạy bằng Python batch ghi vào `papers.summary` |
 | `ARXIV_MAX_RESULTS` | No | Số paper tối đa mỗi lần crawl |
 | `CRAWLER_CRON` | No | Cron expression cho crawler |
 
@@ -150,7 +150,7 @@ API status:
 
 ```txt
 Implemented - đã có code trong backend hiện tại
-Planned     - nằm trong Backend Feature Tickets, chưa mặc định là đã chạy được
+Planned     - chưa có code backend hoàn chỉnh, chưa mặc định là đã chạy được
 Advanced    - tính năng nâng cao, làm sau core flow
 Future/Later - để sau, DB hiện chưa có bảng/cột tương ứng
 ```
@@ -204,16 +204,15 @@ Lưu ý theo DB:
 | User Topics | POST | `/api/v1/user-topics` | Theo dõi chủ đề có sẵn bằng `topic_id` | Implemented |
 | User Topics | PUT | `/api/v1/user-topics/:id` | Đổi chủ đề đang theo dõi | Implemented |
 | User Topics | DELETE | `/api/v1/user-topics/:id` | Bỏ theo dõi chủ đề | Implemented |
-| Papers | GET | `/api/v1/papers?page=1&limit=5&filter=all` | Lấy tất cả paper có phân trang | Planned Core |
-| Papers | GET | `/api/v1/papers?page=1&limit=5&filter=recent` | Lấy paper gần đây | Planned Core |
-| Papers | GET | `/api/v1/papers?page=1&limit=5&filter=2days` | Lấy paper trong 2 ngày gần đây | Planned Core |
-| Papers | GET | `/api/v1/papers/search?q=keyword&page=1&limit=10` | Search theo title, abstract, authors | Planned Core |
-| Papers | GET | `/api/v1/topics/:id/papers?page=1&limit=10` | Lấy paper theo chủ đề | Planned Core |
-| Papers | GET | `/api/v1/papers/:id` | Lấy chi tiết paper | Planned Core |
-| Papers | POST | `/api/v1/papers/:id/summarize` | Tạo/lấy summary cho paper | Planned Core |
-| Favorites | GET | `/api/v1/favorites` | Lấy paper yêu thích | Planned Core |
-| Favorites | POST | `/api/v1/papers/favorite/:id` | Lưu paper yêu thích | Planned Core |
-| Favorites | DELETE | `/api/v1/papers/favorite/:id` | Bỏ lưu paper yêu thích | Planned Core |
+| Papers | GET | `/api/v1/papers?page=1&limit=5&filter=all` | Lấy tất cả paper có phân trang | Implemented |
+| Papers | GET | `/api/v1/papers?page=1&limit=5&filter=recent` | Lấy paper gần đây | Implemented |
+| Papers | GET | `/api/v1/papers?page=1&limit=5&filter=2days` | Lấy paper trong 2 ngày gần đây | Implemented |
+| Papers | GET | `/api/v1/papers?page=1&limit=5&topic_id=1` | Lọc paper theo chủ đề bằng `papers.topic_id` | Implemented |
+| Papers | GET | `/api/v1/papers/search?q=keyword&page=1&limit=10` | Search theo title, abstract, authors | Implemented |
+| Papers | GET | `/api/v1/papers/:id` | Lấy chi tiết paper, bao gồm field `summary` từ DB | Implemented |
+| Favorites | GET | `/api/v1/favorites` | Lấy paper yêu thích | Implemented |
+| Favorites | POST | `/api/v1/papers/favorite/:id` | Lưu paper yêu thích | Implemented |
+| Favorites | DELETE | `/api/v1/papers/favorite/:id` | Bỏ lưu paper yêu thích | Implemented |
 | Crawler | POST | `/api/v1/crawler/run` | Trigger crawler thủ công | Planned Core/Internal |
 | Related | GET | `/api/v1/papers/:id/related?limit=5` | Lấy paper liên quan từ bảng planned `related_papers` | Advanced |
 | Duplicate | GET | `/api/v1/papers/:id/matches?limit=5` | Lấy paper trùng/gần giống từ bảng planned `matching_papers` | Advanced |
@@ -531,6 +530,8 @@ Nếu Dashboard lọc theo topic, FE có thể gửi thêm `topic_id`:
 GET /api/v1/papers?page=1&limit=5&filter=recent&topic_id=1
 ```
 
+Đây là hướng tiếp cận hiện tại của backend để lấy paper theo chủ đề; không dùng endpoint riêng `/api/v1/topics/:id/papers`.
+
 Response mẫu:
 
 ```json
@@ -597,44 +598,9 @@ Response mẫu:
 }
 ```
 
-#### 5.5.3 GET /api/v1/topics/:id/papers
+#### 5.5.3 GET /api/v1/papers/:id
 
-Cách gọi mẫu:
-
-```http
-GET /api/v1/topics/1/papers?page=1&limit=10
-Authorization: Bearer <access_token>
-```
-
-Response mẫu:
-
-```json
-{
-  "success": true,
-  "message": "OK",
-  "data": [
-    {
-      "id": 1,
-      "arxiv_id": "2401.00001",
-      "title": "Transformer for Stock Prediction",
-      "abstract": "This paper proposes...",
-      "summary": "Bài báo đề xuất...",
-      "authors": ["Author A", "Author B"],
-      "published_date": "2026-05-12",
-      "pdf_url": "https://arxiv.org/pdf/2401.00001",
-      "topic_id": 1
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "limit": 10,
-    "total": 12,
-    "total_pages": 2
-  }
-}
-```
-
-#### 5.5.4 GET /api/v1/papers/:id
+Lấy chi tiết thông tin của một paper. `:id` là `papers.id`.
 
 Cách gọi mẫu:
 
@@ -664,27 +630,21 @@ Response mẫu:
 }
 ```
 
-#### 5.5.5 POST /api/v1/papers/:id/summarize
+#### 5.5.4 Summary từ AI batch
 
-Cách gọi mẫu:
+Backend không dùng API realtime `POST /api/v1/papers/:id/summarize` trong core flow hiện tại.
 
-```http
-POST /api/v1/papers/1/summarize
-Authorization: Bearer <access_token>
+Luồng summary được chốt theo hướng batch:
+
+```txt
+Crawler thêm paper mới vào DB
+-> AI chạy python ai/run_summarizer_batch.py --batch-size 20
+-> AI gọi summarize_pending_papers(db, batch_size=20)
+-> AI lưu kết quả vào papers.summary
+-> Backend trả field summary qua GET /api/v1/papers và GET /api/v1/papers/:id
 ```
 
-Response mẫu:
-
-```json
-{
-  "success": true,
-  "message": "Summarize paper successfully",
-  "data": {
-    "paper_id": 1,
-    "summary": "Bài báo đề xuất một phương pháp dùng Transformer cho dự đoán chứng khoán..."
-  }
-}
-```
+Nếu `papers.summary` chưa có, API paper trả `summary: null`.
 
 ### 5.6 Favorite APIs
 
@@ -1093,18 +1053,6 @@ npm start
 /api/v1/health
 ```
 
-### Deployment checklist
-
-- [ ] Set `NODE_ENV=production`
-- [ ] Set `DATABASE_URL`
-- [ ] Set strong `JWT_SECRET`
-- [ ] Set `AI_SERVICE_URL` nếu dùng AI service
-- [ ] Run `npm install`
-- [ ] Start with `npm start`
-- [ ] Test `/api/v1/health`
-- [ ] Test `/api/v1/health/db`
-- [ ] Configure CORS domain nếu cần giới hạn frontend origin
-
 ---
 
 ## 8. Development Workflow
@@ -1118,7 +1066,7 @@ Thứ tự phát triển backend:
 4. Papers list/detail
 5. Favorites
 6. Search/filter
-7. AI summary integration
+7. AI summary batch integration
 8. Related papers
 9. Duplicate detection
 10. Crawler

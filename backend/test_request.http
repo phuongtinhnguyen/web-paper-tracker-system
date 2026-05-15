@@ -68,3 +68,22 @@ GET http://localhost:8000/api/v1/papers?page=1&limit=5&filter=recent
 
 ### Get papers in last 2 days
 GET http://localhost:8000/api/v1/papers?page=1&limit=5&filter=2days
+
+
+### Lấy chi tiết paper 1
+GET http://localhost:8000/api/v1/papers/1
+
+### Search
+GET http://localhost:8000/api/v1/papers/search?q=machine&page=1&limit=10
+
+### Them muc yeu thich
+POST http://localhost:8000/api/v1/papers/favorite/1
+Authorization: Bearer <access_token>
+
+### xoa muc yeu thich
+DELETE http://localhost:8000/api/v1/papers/favorite/1
+Authorization: Bearer <access_token>
+
+### Lay muc yeu thich
+GET http://localhost:8000/api/v1/favorites?page=1&limit=5
+Authorization: Bearer <access_token>

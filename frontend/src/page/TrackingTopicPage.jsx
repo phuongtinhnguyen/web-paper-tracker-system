@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import {Plus, Tag, ChevronDown,Hash, Loader2, X, LayoutGrid, ChevronLeft, ChevronRight} from "lucide-react";
 import PaperCard from "../components/PaperCard";
 import {
@@ -9,7 +9,7 @@ import {
   untrackTopic,
   addFavorite,
   removeFavorite,
-} from "../services/api";
+} from "../services/API";
 
 export default function TrackingTopics() {
   const dropdownRef = useRef(null);

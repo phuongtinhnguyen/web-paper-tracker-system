@@ -6,21 +6,32 @@ import {
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 
-export default function Sidebar() {
+export default function Sidebar({ username = "User" }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   const isActive = (path) => location.pathname === path;
 
+  // Lấy ký tự đầu của username để hiển thị avatar
+  const getInitial = (name) => {
+    return name.charAt(0).toUpperCase();
+  };
+
   // Danh sách các mục menu chính
   const menuItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/topics', icon: Bookmark, label: 'Quản lý Topic' },
+    { path: '/topics', icon: Bookmark, label: 'Quản lý chủ đề' },
     { path: '/favorites', icon: Heart, label: 'Mục yêu thích' },
     { path: '/history', icon: CheckCircle2, label: 'Lịch sử đọc' },
-    { path: '/tracking-topics', icon: BellDot, label: 'Theo dõi chủ đề' } // Đã chuyển lên đây
+    { path: '/tracking-topics', icon: BellDot, label: 'Chủ đề theo dõi' }
   ];
+
+  const handleLogout = () => {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("username");
+    navigate("/");
+  };
 
   return (
     <aside className="w-64 bg-white border-r border-emerald-100 flex flex-col h-screen overflow-hidden font-sans">
@@ -32,15 +43,15 @@ export default function Sidebar() {
           className="flex items-center gap-3 text-emerald-700 font-bold text-xl hover:opacity-80 transition-all w-full"
         >
           <div className="w-10 h-10 bg-emerald-500 rounded-2xl flex-shrink-0 shadow-md border-2 border-emerald-200 flex items-center justify-center text-white font-black">
-            U
+            {getInitial(username)}
           </div>
-          <span className="truncate text-lg">User</span>
+          <span className="truncate text-lg">{username}</span>
         </button>
         
         {showUserMenu && (
           <div className="absolute top-20 left-6 w-52 bg-white border border-emerald-50 shadow-2xl rounded-2xl py-2 z-50 animate-in fade-in zoom-in duration-200">
             <button 
-              onClick={() => navigate("/")} 
+              onClick={handleLogout} 
               className="w-full px-4 py-3 text-left text-sm text-red-500 hover:bg-red-50 flex items-center gap-2 transition-colors font-semibold"
             >
               <LogOut size={16} /> Đăng xuất

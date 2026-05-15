@@ -9,17 +9,8 @@ import HistoryPage from './page/HistoryPage';
 import TopicPage from './page/TopicsPage';
 import TrackingTopics from './page/TrackingTopicPage';
 import PaperDetailPage from './page/PaperDetailPage';
-
+import ProtectedRoute from './components/ProtectedRoute';
 // Component bảo vệ route - chỉ cho phép user đã đăng nhập truy cập
-const ProtectedRoute = ({ children }) => {
-  const token = localStorage.getItem('access_token');
-  
-  if (!token) {
-    return <Navigate to="/" replace />;
-  }
-  
-  return children;
-};
 
 function App() {
   const [searchQuery, setSearchQuery] = useState("");

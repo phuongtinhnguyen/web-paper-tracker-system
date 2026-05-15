@@ -1,12 +1,13 @@
 import { Outlet } from "react-router-dom";
-import Sidebar from "./Sidebar"; 
+import Sidebar from "./Sidebar";
+import SearchBar from "./SearchBar";
 
 // Lấy username từ localStorage
 const getUsername = () => {
-  return localStorage.getItem("username") || "Người dùng";
+  return localStorage.getItem("username") ;
 };
 
-export default function MainLayout() {
+export default function MainLayout({ onSearch, onClearSearch }) {
   const username = getUsername();
 
   return (
@@ -25,13 +26,16 @@ export default function MainLayout() {
                   {username}
                 </p>
               </div>
+              <div className="flex-1 max-w-2xl">
+                <SearchBar onSearch={onSearch} onClear={onClearSearch} />
+              </div>
             </div>
           </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-6 bg-gray-50">
           <div className="max-w-7xl mx-auto">
-            <Outlet /> 
+            <Outlet />
           </div>
         </main>
       </div>

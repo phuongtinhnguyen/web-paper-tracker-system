@@ -1,14 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Loader2, ChevronDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, ChevronDown, ListFilter } from "lucide-react";
 import PaperCard from "../components/PaperCard";
 import { getPapers, searchPapers, addFavorite, removeFavorite } from "../services/API";
 import SearchBar from "../components/SearchBar";
-import { ListFilter } from "lucide-react";
 
 export default function DashboardPage({ searchQuery }) {
   const [filter, setFilter] = useState("all");
-  const [isOpenFilter, setIsOpenFilter] = useState(false); 
+  const [isOpenFilter, setIsOpenFilter] = useState(false);
   const filterRef = useRef(null);
   const [papers, setPapers] = useState([]);
   const [searchParams] = useSearchParams();
@@ -22,84 +21,89 @@ export default function DashboardPage({ searchQuery }) {
   const postsPerPage = 5;
 
   const topicId = searchParams.get("topic");
-
   const prevTopicIdRef = useRef(topicId);
   const prevSearchQueryRef = useRef(searchQuery);
 
   useEffect(() => {
+    // Kiểm tra nếu topic hoặc từ khóa tìm kiếm thay đổi thì reset về trang 1
     const isTopicChanged = prevTopicIdRef.current !== topicId;
     const isSearchChanged = prevSearchQueryRef.current !== searchQuery;
-    const page = (isTopicChanged || isSearchChanged) ? 1 : currentPage;
+    
+    let activePage = currentPage;
+    if (isTopicChanged || isSearchChanged) {
+      activePage = 1;
+      setCurrentPage(1);
+    }
+    
     prevTopicIdRef.current = topicId;
     prevSearchQueryRef.current = searchQuery;
 
-    if (isTopicChanged || isSearchChanged) {
-        setCurrentPage(1);
-    }
-
     const fetchPapers = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            // Nếu có search query thì dùng API search, ngược lại dùng API thường
-            let res;
-            if (searchQuery && searchQuery.trim()) {
-                res = await searchPapers(searchQuery, { page, limit: postsPerPage });
-            } else {
-                const params = { page, limit: postsPerPage, filter: filter };
-                if (topicId) params.topic_id = topicId;
-                res = await getPapers(params);
-            }
-            
-            const result = res.data;
-            const list = result.data ?? result;
-
-            setPapers(list);
-            setTotal(result.total ?? list.length);
-            setTotalPages(
-                result.totalPages ??
-                Math.ceil((result.total ?? list.length) / postsPerPage)
-            );
-        } catch {
-            setError("Không thể tải dữ liệu bài báo. Vui lòng thử lại sau.");
-        } finally {
-            setLoading(false);
+      setLoading(true);
+      setError(null);
+      try {
+        let res;
+        if (searchQuery && searchQuery.trim()) {
+          res = await searchPapers(searchQuery, { page: activePage, limit: postsPerPage });
+        } else {
+          const params = { page: activePage, limit: postsPerPage, filter: filter };
+          if (topicId) params.topic_id = topicId;
+          res = await getPapers(params);
         }
+
+        const result = res.data;
+        // Logic lấy data linh hoạt: Ưu tiên result.data.data, sau đó result.data, cuối cùng là result
+        const actualData = result.data?.data || result.data || result;
+        const totalItems = result.data?.total || result.total || (Array.isArray(actualData) ? actualData.length : 0);
+        
+        setPapers(Array.isArray(actualData) ? actualData : []);
+        setTotal(totalItems);
+        
+        // Tính toán tổng số trang
+        const pages = Math.ceil(totalItems / postsPerPage);
+        setTotalPages(pages > 0 ? pages : 1);
+
+      } catch (err) {
+        console.error("Chi tiết lỗi:", err.response);
+        if (err.response?.status === 404) {
+          setError("Đường dẫn dữ liệu không tồn tại (404). Vui lòng liên hệ Admin.");
+        } else {
+          setError("Không thể tải dữ liệu. Vui lòng kiểm tra kết nối máy chủ.");
+        }
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchPapers();
-}, [currentPage, topicId, filter, searchQuery]);
+  }, [currentPage, topicId, filter, searchQuery]);
 
+  // Xử lý đóng dropdown khi click ra ngoài
   useEffect(() => {
-      const handleClickOutside = (event) => {
-          
-          if (filterRef.current && !filterRef.current.contains(event.target)) {
-              setIsOpenFilter(false); 
-          }
-      };
-
-      
-      if (isOpenFilter) {
-          document.addEventListener("mousedown", handleClickOutside);
+    const handleClickOutside = (event) => {
+      if (filterRef.current && !filterRef.current.contains(event.target)) {
+        setIsOpenFilter(false);
       }
+    };
+    if (isOpenFilter) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpenFilter]);
 
-      return () => {
-          document.removeEventListener("mousedown", handleClickOutside);
-      };
-  }, [isOpenFilter]); 
-
-  
   const filterOptions = {
-      all: "Tất cả bài báo",
-      recent: "Bài báo gần đây",
-      "2days": "2 ngày qua"
+    all: "Tất cả bài báo",
+    recent: "Bài báo gần đây",
+    "2days": "2 ngày qua"
   };
 
-    const handleToggleFavorite = async (paper) => {
+  const handleToggleFavorite = async (paper) => {
     const paperId = paper.id;
     const isFav = favorites.has(paperId);
 
-    
+    // Optimistic UI update
     setFavorites((prev) => {
       const next = new Set(prev);
       if (isFav) next.delete(paperId);
@@ -110,8 +114,8 @@ export default function DashboardPage({ searchQuery }) {
     try {
       if (isFav) await removeFavorite(paperId);
       else await addFavorite(paperId);
-    } catch {
-      
+    } catch (err) {
+      // Rollback nếu gọi API lỗi
       setFavorites((prev) => {
         const next = new Set(prev);
         if (isFav) next.add(paperId);
@@ -119,119 +123,118 @@ export default function DashboardPage({ searchQuery }) {
         return next;
       });
     }
-    };
+  };
 
-    return (
+  return (
     <div className="max-w-7xl mx-auto pb-10">
       <header className="mb-8 px-4 flex items-center justify-between gap-4">
-  
-          {/* BÊN TRÁI: Nút Dropdown Filter - Thêm ref vào đây */}
-          <div className="relative" ref={filterRef}>
-            <button
-              onClick={() => setIsOpenFilter(!isOpenFilter)}
-              className="flex items-center gap-2 px-5 py-3 bg-emerald-600 text-white rounded-2xl shadow-lg hover:bg-emerald-700 transition-all active:scale-95"
-            >
-              <ListFilter size={20} />
-              <span className="font-bold">{filterOptions[filter]}</span>
-              <ChevronDown size={16} className={`transition-transform duration-300 ${isOpenFilter ? 'rotate-180' : ''}`} />
-            </button>
+        {/* Bộ lọc Filter */}
+        <div className="relative" ref={filterRef}>
+          <button
+            onClick={() => setIsOpenFilter(!isOpenFilter)}
+            className="flex items-center gap-2 px-5 py-3 bg-emerald-600 text-white rounded-2xl shadow-lg hover:bg-emerald-700 transition-all active:scale-95"
+          >
+            <ListFilter size={20} />
+            <span className="font-bold">{filterOptions[filter]}</span>
+            <ChevronDown size={16} className={`transition-transform duration-300 ${isOpenFilter ? 'rotate-180' : ''}`} />
+          </button>
 
-            {/* Menu thả xuống */}
-            {isOpenFilter && (
-              <div className="absolute left-0 mt-2 w-56 bg-white border border-gray-100 rounded-2xl shadow-2xl z-[1100] py-2 animate-in fade-in zoom-in duration-200">
-                {[
-                  { id: "all", label: "Tất cả bài báo" },
-                  { id: "recent", label: "Bài báo gần đây" },
-                  { id: "2days", label: "2 ngày qua" },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      setFilter(item.id);
-                      setIsOpenFilter(false); 
-                      setCurrentPage(1);
-                    }}
-                    className={`w-full text-left px-5 py-3 text-sm font-medium transition-colors ${
-                      filter === item.id 
-                        ? "text-emerald-600 bg-emerald-50 font-bold" 
-                        : "text-gray-600 hover:bg-gray-50"
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
+          {isOpenFilter && (
+            <div className="absolute left-0 mt-2 w-56 bg-white border border-gray-100 rounded-2xl shadow-2xl z-[1100] py-2 animate-in fade-in zoom-in duration-200">
+              {Object.entries(filterOptions).map(([id, label]) => (
+                <button
+                  key={id}
+                  onClick={() => {
+                    setFilter(id);
+                    setIsOpenFilter(false);
+                    setCurrentPage(1);
+                  }}
+                  className={`w-full text-left px-5 py-3 text-sm font-medium transition-colors ${
+                    filter === id 
+                      ? "text-emerald-600 bg-emerald-50 font-bold" 
+                      : "text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="hidden md:block text-right">
+          <p className="text-xl font-black text-gray-800">{total} bài báo</p>
+        </div>
+      </header>
+
+      {/* Hiển thị lỗi nếu có */}
+      {error ? (
+        <div className="text-center py-20">
+           <p className="text-red-500 bg-red-50 inline-block px-6 py-3 rounded-2xl font-semibold border border-red-100">
+             {error}
+           </p>
+        </div>
+      ) : loading ? (
+        <div className="flex flex-col items-center justify-center py-20 text-emerald-600">
+          <Loader2 className="animate-spin mb-4" size={48} />
+          <p className="font-medium animate-pulse">Đang tải dữ liệu...</p>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-4">
+            {papers.length > 0 ? (
+              papers.map((paper) => (
+                <PaperCard
+                  key={paper.id}
+                  paper={paper}
+                  isFavorite={favorites.has(paper.id)}
+                  onToggleFavorite={() => handleToggleFavorite(paper)}
+                />
+              ))
+            ) : (
+              <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-gray-200 text-gray-400">
+                <p className="text-lg">Không tìm thấy bài báo nào phù hợp.</p>
               </div>
             )}
           </div>
 
-          {/* Ở GIỮA: SearchBar */}
-          <div className="flex-1 max-w-2xl">
-            <SearchBar onSearch={(q) => console.log(q)} onClear={() => {}} />
-          </div>
+          {/* Phân trang */}
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center gap-2 mt-10">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                disabled={currentPage === 1}
+                className="p-2 rounded-xl border border-gray-200 bg-white hover:bg-emerald-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft size={20} />
+              </button>
 
-          {/* BÊN PHẢI: Số lượng (Giữ nguyên hoặc ẩn bớt) */}
-          <div className="hidden md:block text-right">
-            <p className="text-xl font-black text-gray-800">{total} bài báo</p>
-          </div>
-        </header>
+              <div className="flex items-center gap-1">
+                {[...Array(totalPages)].map((_, i) => (
+                  <button
+                    key={i + 1}
+                    onClick={() => setCurrentPage(i + 1)}
+                    className={`w-10 h-10 rounded-xl text-sm font-bold transition-all ${
+                      currentPage === i + 1
+                        ? "bg-emerald-600 text-white shadow-md shadow-emerald-100"
+                        : "bg-white border border-gray-100 text-gray-400 hover:border-emerald-500 hover:text-emerald-600"
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
 
-      {loading ? (
-        <div className="flex justify-center py-20 text-green-600">
-          <Loader2 className="animate-spin" size={40} />
-        </div>
-      ) : error ? (
-        <div className="text-center py-20 text-red-400 font-medium">{error}</div>
-      ) : (
-        <div className="grid grid-cols-1 gap-2">
-          {papers.length > 0 ? (
-            papers.map((paper) => (
-              <PaperCard
-                key={paper.id}
-                paper={paper}
-                isFavorite={favorites.has(paper.id)}
-                onToggleFavorite={() => handleToggleFavorite(paper)}
-              />
-            ))
-          ) : (
-            <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-gray-100 text-gray-400">
-              Không có dữ liệu bài báo.
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-xl border border-gray-200 bg-white hover:bg-emerald-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronRight size={20} />
+              </button>
             </div>
           )}
-        </div>
-      )}
-
-      {totalPages > 1 && !loading && (
-        <div className="flex justify-center items-center gap-2 mt-10">
-          <button
-            onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-            disabled={currentPage === 1}
-            className="p-2 rounded-xl border border-gray-200 hover:bg-green-50 disabled:opacity-20"
-          >
-            <ChevronLeft size={20} />
-          </button>
-
-          {[...Array(totalPages)].map((_, i) => (
-            <button
-              key={i + 1}
-              onClick={() => setCurrentPage(i + 1)}
-              className={`w-10 h-10 rounded-xl text-sm font-bold transition-all ${
-                currentPage === i + 1
-                  ? "bg-green-600 text-white"
-                  : "bg-white border border-gray-100 text-gray-400 hover:border-green-500"
-              }`}
-            >
-              {i + 1}
-            </button>
-          ))}
-
-          <button
-            onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-            disabled={currentPage === totalPages}
-            className="p-2 rounded-xl border border-gray-200 hover:bg-green-50 disabled:opacity-20"
-          >
-            <ChevronRight size={20} />
-          </button>
-        </div>
+        </>
       )}
     </div>
   );

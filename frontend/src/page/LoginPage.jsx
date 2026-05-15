@@ -1,5 +1,5 @@
 import  { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import backgroundImg from '../assets/background.jpg';
 import SuccessModal from '../components/SuccessModal';
 import ErrorModal from '../components/ErrorModal';
@@ -10,6 +10,8 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const location = useLocation();
+  const from = location.state?.from?.pathname || "/dashboard";
 
   const [modalConfig, setModalConfig] = useState({
     isOpen: false,
@@ -20,40 +22,53 @@ const LoginPage = () => {
 
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const res = await login(email, password);
-      const { access_token, user } = res.data;
+ const handleLogin = async (e) => {
+  e.preventDefault();
+  setLoading(true);
 
-      // Lưu token và thông tin user
+  try {
+    const res = await login(email, password);
+    const loginResponse = res.data.data;
+
+    if (loginResponse) {
+      const { access_token, username, user } = loginResponse;
       localStorage.setItem("access_token", access_token);
-      localStorage.setItem("username", user?.username || user?.email || "Người dùng");
+      
+      const displayName = username || user?.username || "Người dùng";
+      localStorage.setItem("username", displayName);
 
+      // 1. Hiển thị thông báo THÀNH CÔNG
       setModalConfig({
         isOpen: true,
         type: "success",
         title: "Thành công!",
-        message: `Chào mừng bạn trở lại. Hệ thống đã sẵn sàng!`,
+        message: `Chào mừng ${displayName} trở lại. Hệ thống đã sẵn sàng!`,
         onConfirm: () => {
           setModalConfig((prev) => ({ ...prev, isOpen: false }));
-          navigate("/dashboard");
+          navigate(from, { replace: true });
         }
       });
-    } catch (err) {
-      const msg = err?.response?.data?.message || "Email hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại!";
-      setModalConfig({
-        isOpen: true,
-        type: "error",
-        title: "Đăng nhập thất bại",
-        message: msg,
-        onConfirm: () => setModalConfig((prev) => ({ ...prev, isOpen: false }))
-      });
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (error) {
+    // 2. Hiển thị thông báo THẤT BẠI (Bắt lỗi từ API login)
+    console.error("Login error:", error);
+    
+    // Lấy thông báo lỗi từ server nếu có, nếu không thì dùng thông báo mặc định
+    const errorMessage = error.response?.data?.message || "Email hoặc mật khẩu không chính xác. Vui lòng thử lại!";
+
+    setModalConfig({
+      isOpen: true,
+      type: "error",
+      title: "Đăng nhập thất bại",
+      message: errorMessage,
+      onConfirm: () => {
+        setModalConfig((prev) => ({ ...prev, isOpen: false }));
+      }
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleResetPassword = (e) => {
     e.preventDefault();
@@ -61,10 +76,10 @@ const LoginPage = () => {
       isOpen: true,
       title: "Đã gửi yêu cầu!",
       message: `Chúng tôi đã gửi hướng dẫn lấy lại mật khẩu vào email:\n${email}`,
-      onConfirm: () => {
-        setModalConfig((prev) => ({ ...prev, isOpen: false }));
-        setIsForgotPassword(false);
-      }
+        onConfirm: () => {
+          setModalConfig((prev) => ({ ...prev, isOpen: false }));
+          navigate(from, { replace: true });
+        }
     });
   };
 

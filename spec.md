@@ -190,80 +190,80 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 
 - [x] API đăng ký
 - [x] API đăng nhập
-- [ ] Sửa API đăng ký lại bổ sung thêm giờ tạo
-- [ ] Hash password
-- [ ] JWT access token
-- [ ] Middleware bảo vệ protected API
-- [ ] API logout hoặc cơ chế logout phía client
+- [x] API đăng ký trả `created_at`
+- [x] Hash password bằng `bcrypt`
+- [x] JWT access token
+- [x] Middleware bảo vệ protected API
+- [x] Cơ chế logout phía client bằng cách xóa token
 
 ### Thêm, sửa, xoa chủ đề theo dõi
 
-- [ ] API lấy danh sách chủ đề theo dõi
-- [ ] API thêm chủ đề theo dõi
-- [ ] API sửa chủ đề theo dõi - Low priority
-- [ ] API xóa chủ đề theo dõi
-- [ ] Validate tên chủ đề
+- [x] API lấy tất cả chủ đề trong DB cho combo box: `GET /api/v1/topics`
+- [x] API lấy danh sách chủ đề user đang theo dõi: `GET /api/v1/user-topics`
+- [x] API thêm chủ đề theo dõi bằng `topic_id`: `POST /api/v1/user-topics`
+- [x] API sửa chủ đề theo dõi bằng `topic_id`: `PUT /api/v1/user-topics/:id` - Low priority
+- [x] API xóa/bỏ theo dõi chủ đề: `DELETE /api/v1/user-topics/:id`
+- [x] Validate `topic_id`
 
 ### Tự động lấy paper mới theo chủ đề
 
-- [ ] API lấy đầy đủ papers của chủ đề nào đó nhưng sắp xếp theo ngày tạo gần nhất
-- [ ] API trigger crawler thủ công cho môi trường dev
+- [ ] API lấy đầy đủ papers của một chủ đề, sắp xếp theo ngày tạo gần nhất: `GET /api/v1/topics/:id/papers?page=1&limit=10`
+- [ ] API trigger crawler thủ công cho môi trường dev: `POST /api/v1/crawler/run`
 
 ### Lưu thông tin paper: tiêu đề, abstract, tác giả, ngày công bố, link
 
-- [ ] API trả về tiêu đề, abstract, tác giả, ngày công bố, url paper
+- [ ] API trả về tiêu đề, abstract, tác giả, ngày công bố, url paper: `GET /api/v1/papers/:id`
 
 ### Tom tắt ngắn ý chính của paper từ abstract
 
-- [ ] API trả về bản tóm tắt một paper
+- [ ] API trả về bản tóm tắt một paper: `POST /api/v1/papers/:id/summarize`
 - [ ] Service gọi AI summary module
 - [ ] Lưu summary trả về vào database
 - [ ] Xử lý lỗi khi AI service thất bại
 
 ### Hien thị danh sách paper mới
 
-- [ ] API lấy danh sách paper gần đây (lấy tất cả papers nhưng sắp xếp theo gần đây)
-- [ ] API lấy danh sách paper gần đây (lấy tất cả papers nhưng sắp xếp theo 2 gần đây)
+- [ ] API lấy tất cả paper có phân trang: `GET /api/v1/papers?page=1&limit=5&filter=all`
+- [ ] API lấy danh sách paper gần đây: `GET /api/v1/papers?page=1&limit=5&filter=recent`
+- [ ] API lấy danh sách paper trong 2 ngày gần đây: `GET /api/v1/papers?page=1&limit=5&filter=2days`
 
 ### Tim kiếm, lọc paper theo từ khoa hoặc chủ đề
 
-- [ ] API search theo title
-- [ ] API search theo abstract
-- [ ] API search theo authors
+- [ ] API search chung theo `title`, `abstract`, `authors`: `GET /api/v1/papers/search?q=keyword&page=1&limit=10`
 
 ### Xem chi tiết paper
 
-- [x] API trả về tiêu đề, abstract, tác giả, ngày công bố, url paper - Làm theo check list ở trên
+- [ ] API trả về tiêu đề, abstract, tác giả, ngày công bố, url paper: `GET /api/v1/papers/:id`
 
 ### Luu paper yêu thích
 
-- [ ] API lưu paper yêu thích
-- [ ] API bỏ lưu paper yêu thích
-- [ ] API lấy danh sách paper yêu thích
+- [ ] API lưu paper yêu thích: `POST /api/v1/papers/favorite/:id`
+- [ ] API bỏ lưu paper yêu thích: `DELETE /api/v1/papers/favorite/:id`
+- [ ] API lấy danh sách paper yêu thích: `GET /api/v1/favorites`
 
 ### Nâng cao - Gợi ý paper liên quan
 
-- [ ] API lấy paper liên quan
+- [ ] API lấy paper liên quan: `GET /api/v1/papers/:id/related?limit=5`
 - [ ] Giới hạn số lượng paper gợi ý
 
 ### Nâng cao - Phát hiện paper trùng hoặc gần giống
 
-- [ ] API lấy tên và id các paper trùng hoặc gần giống
+- [ ] API lấy tên và id các paper trùng hoặc gần giống: `GET /api/v1/papers/:id/matches?limit=5`
 
 ### Nâng cao - Gửi thong bao khi co paper mới
 
 - [ ] Service tạo thông báo khi crawler có paper mới - check sau
-- [ ] API lấy danh sách thông báo - check sau
-- [ ] API đánh dấu thông báo đã đọc - check sau
+- [ ] API lấy danh sách thông báo: `GET /api/v1/notifications` - làm sau khi có bảng `notifications`
+- [ ] API đánh dấu thông báo đã đọc: `PATCH /api/v1/notifications/:id/read` - làm sau khi có bảng `notifications`
 
 ### Nâng cao - Thong ke xu hưong theo chủ đề
 
-- [ ] API lấy danh sách topic title trong bảng `trending`
+- [ ] API lấy danh sách topic xu hướng theo cột planned `topics.trending`: `GET /api/v1/stats/topics/trends`
 
 ### Nâng cao - Chấm điem paper đang đọc
 
-- [ ] API lưu điểm đã user chấm vào DB
-- [ ] API lấy điểm paper của user
+- [ ] API lưu điểm user chấm vào DB: `POST /api/v1/papers/:id/rating`
+- [ ] API lấy điểm paper của user: `GET /api/v1/papers/:id/rating/me`
 
 ---
 
@@ -307,32 +307,33 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 
 ### Nâng cao - Gợi ý paper liên quan
 - [ ] Bảng `related_papers`
-- [ ] Cột `paper_ID`
-- [ ] Cột `related_paper_ID`
+- [ ] Cột `paper_id`
+- [ ] Cột `related_paper_id`
 - [ ] Tìm paper cùng topic
 - [ ] Tìm paper cùng tác giả - Low Priority
 
 ### Nâng cao - Phát hiện paper trùng hoặc gần giống
 
 - [ ] Bảng `matching_papers`
-- [ ] Cột `paper_ID`
-- [ ] Cột `related_paper_ID`
+- [ ] Cột `paper_id`
+- [ ] Cột `related_paper_id`
 - [ ] Tìm paper trùng hoặc gần giống bằng python
 
 ### Nâng cao - Gửi thong bao khi co paper mới
 
-- [ ] Server DB cào data theo giờ + gửi event cho FE/BE sau khi cào xong
+- [ ] Server DB/crawler cào data theo giờ + gửi event cho FE/BE sau khi cào xong
+- [ ] Bảng `notifications` sẽ thực hiện sau, DB hiện tại chưa có bảng này
 
 ### Nâng cao - Thong ke xu hưong theo chủ đề
-- [ ] Tạo 1 cột `trending` cho bảng `topic`
+- [ ] Tạo 1 cột `trending` cho bảng `topics`
 - [ ] Server DB call py func truyền vào tất cả các topic, AI thống kê ra các topic xu hướng trả về list - đầu list là xu hướng nhất,...
 - [ ] Lưu vào DB ở cột `trending`
 
 ### Nâng cao - Chấm điem paper đang đọc
 
 - [ ] Tạo 1 bảng `paper_ratings`
-- [ ] Cột `user_ID`
-- [ ] Cột `paper_ID`
+- [ ] Cột `user_id`
+- [ ] Cột `paper_id`
 - [ ] Cột `rating`
 
 ---
@@ -431,7 +432,7 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 
 ## Scalability
 
-- Backend tách module theo domain: auth, users, topics, papers, favorites, search
+- Backend tách module theo domain: auth, health, topics/user-topics, papers, favorites, search
 - AI logic tách thành module/service riêng
 - Database models và migrations được quản lý tập trung
 - Crawler có thể chạy độc lập theo lịch
@@ -467,11 +468,16 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 
 - Node.js
 - Express.js
+- PostgreSQL/Neon query bằng `pg`
 - JWT
 - bcrypt
 - CORS
+- helmet
+- morgan
+- zod
 - dotenv
-- PostgreSQL driver hoặc query layer phù hợp
+- axios
+- node-cron
 
 ---
 
@@ -587,8 +593,14 @@ web-paper-tracker-system/
 |   |   |-- middlewares/
 |   |   |-- modules/
 |   |   |   |-- auth/
-|   |   |   |-- users/
+|   |   |   |-- health/
 |   |   |   |-- topics/
+|   |   |   |   |-- topic.routes.js
+|   |   |   |   |-- userTopic.routes.js
+|   |   |   |   |-- topic.controller.js
+|   |   |   |   |-- topic.service.js
+|   |   |   |   |-- topic.repository.js
+|   |   |   |   |-- topic.validation.js
 |   |   |   |-- papers/
 |   |   |   |-- favorites/
 |   |   |   |-- search/
@@ -705,13 +717,31 @@ Database được triển khai bằng Python với:
 - `models.py`: định nghĩa ORM models
 - `alembic/`: quản lý database migrations
 
+DB nghiệp vụ hiện tại có 5 bảng chính:
+
+```txt
+users
+topics
+papers
+favorites
+user_topics
+```
+
+Ghi chú:
+
+- `alembic_version` là bảng metadata của Alembic, không phải bảng nghiệp vụ.
+- `papers.topic_id` đã có trong DB hiện tại và liên kết tới `topics.id`.
+- Các bảng/cột advanced `related_papers`, `matching_papers`, `paper_ratings`, `topics.trending`, `notifications` chưa có trong DB hiện tại.
+
 ---
 
 ## Entities
 
----
+### Current Entities
 
-### users
+Các bảng đang có trong DB hiện tại:
+
+#### users
 
 | Field | Type | Constraint |
 |---|---|---|
@@ -721,18 +751,14 @@ Database được triển khai bằng Python với:
 | full_name | String(255) | Nullable |
 | created_at | DateTime | Default current UTC time |
 
----
-
-### topics
+#### topics
 
 | Field | Type | Constraint |
 |---|---|---|
 | id | Integer | Primary key, index |
 | name | String(100) | Unique, index, not null |
 
----
-
-### papers
+#### papers
 
 | Field | Type | Constraint |
 |---|---|---|
@@ -745,10 +771,9 @@ Database được triển khai bằng Python với:
 | published_date | DateTime | Nullable |
 | pdf_url | String(500) | Nullable |
 | created_at | DateTime | Default current UTC time |
+| topic_id | Integer | Foreign key to `topics.id`, nullable |
 
----
-
-### favorites
+#### favorites
 
 | Field | Type | Constraint |
 |---|---|---|
@@ -756,14 +781,55 @@ Database được triển khai bằng Python với:
 | paper_id | Integer | Foreign key to `papers.id`, primary key |
 | added_at | DateTime | Default current UTC time |
 
----
-
-### user_topics
+#### user_topics
 
 | Field | Type | Constraint |
 |---|---|---|
 | user_id | Integer | Foreign key to `users.id`, primary key |
 | topic_id | Integer | Foreign key to `topics.id`, primary key |
+
+### Future/Planned Entities
+
+Các bảng/cột dưới đây chưa có trong DB hiện tại, sẽ bổ sung khi làm feature nâng cao:
+
+#### related_papers
+
+| Field | Type | Constraint |
+|---|---|---|
+| paper_id | Integer | Foreign key to `papers.id`, primary key |
+| related_paper_id | Integer | Foreign key to `papers.id`, primary key |
+
+#### matching_papers
+
+| Field | Type | Constraint |
+|---|---|---|
+| paper_id | Integer | Foreign key to `papers.id`, primary key |
+| related_paper_id | Integer | Foreign key to `papers.id`, primary key |
+
+#### notifications
+
+| Field | Type | Constraint |
+|---|---|---|
+| id | Integer | Primary key |
+| user_id | Integer | Foreign key to `users.id` |
+| title | String | Not null |
+| message | Text | Not null |
+| is_read | Boolean | Default false |
+| created_at | DateTime | Default current UTC time |
+
+#### paper_ratings
+
+| Field | Type | Constraint |
+|---|---|---|
+| user_id | Integer | Foreign key to `users.id`, primary key |
+| paper_id | Integer | Foreign key to `papers.id`, primary key |
+| rating | Integer | User rating value |
+
+#### topics.trending
+
+| Field | Type | Constraint |
+|---|---|---|
+| trending | Integer | Planned column on `topics`, dùng để sắp xếp topic xu hướng |
 
 ---
 
@@ -773,6 +839,8 @@ Database được triển khai bằng Python với:
 - One Paper can be favorited by many Users
 - One User can follow many Topics
 - One Topic can be followed by many Users
+- One Topic can have many Papers
+- One Paper belongs to one Topic through `papers.topic_id`
 - `favorites` và `user_topics` dùng composite primary key
 - Foreign keys dùng `ondelete="CASCADE"`
 
@@ -786,7 +854,7 @@ Các field hỗ trợ search:
 - abstract
 - authors
 
-Nếu bổ sung category/topic mapping cho paper, hệ thống có thể filter thêm theo category/topic.
+Filter theo chủ đề dùng trực tiếp cột `papers.topic_id`, không cần bảng mapping paper-topic riêng.
 
 ---
 
@@ -802,167 +870,38 @@ Frontend và Backend thống nhất một base URL khi tích hợp.
 
 ---
 
-# Auth API
+# API Overview
 
-## POST /auth/register
-
-Request:
-
-```json
-{
-    "username": "test",
-    "email": "test@gmail.com",
-    "password": "123456"
-}
-```
-
-Response:
-
-```json
-{
-    "message": "Register successfully"
-}
-```
-
----
-
-## POST /auth/login
-
-Request:
-
-```json
-{
-    "email": "test@gmail.com",
-    "password": "123456"
-}
-```
-
-Response:
-
-```json
-{
-    "access_token": "jwt-token",
-    "username": "test"
-}
-```
-
----
-
-## GET /auth/me
-
-Lấy thông tin user từ JWT token.
-
----
-
-# Topic API
-
-## GET /topics
-
-Lấy danh sách topic của user.
-
----
-
-## POST /topics
-
-Tạo topic mới.
-
----
-
-## PUT /topics/:id
-
-Update topic.
-
----
-
-## DELETE /topics/:id
-
-Delete topic.
-
----
-
-# Paper API
-
-## GET /papers?page=1&limit=10
-
-Lấy danh sách paper có phân trang.
-
----
-
-## GET /papers/:id
-
-Lấy chi tiết paper.
-
----
-
-## GET /papers/search?q=keyword&page=1&limit=10
-
-Search paper theo:
-
-- title
-- abstract
-- authors
-
----
-
-## POST /papers/favorite/:id
-
-Save favorite paper.
-
----
-
-## DELETE /papers/favorite/:id
-
-Remove favorite paper.
-
----
-
-# Favorite API
-
-## GET /favorites
-
-Lấy danh sách paper yêu thích của user.
-
----
-
-# AI/Search API
-
-## GET /search?q=keyword&page=1&per_page=20
-
-Search paper theo keyword.
-
----
-
-## GET /search/related/:paper_id?limit=5
-
-Gợi ý paper liên quan.
-
----
-
-## POST /search/check-duplicate
-
-Request:
-
-```json
-{
-    "title": "Transformer for Stock Prediction",
-    "abstract": "We propose a novel..."
-}
-```
-
-Response:
-
-```json
-{
-    "is_duplicate": true,
-    "status": "Gần giống",
-    "similarity": 78.5,
-    "matched_paper": {
-        "id": 1,
-        "title": "...",
-        "link": "..."
-    }
-}
-```
+| Nhóm | Method | Endpoint đầy đủ | Mục đích | Trạng thái |
+|---|---|---|---|---|
+| Health | GET | `/api/v1/health` | Kiểm tra server Express | Implemented |
+| Health | GET | `/api/v1/health/db` | Kiểm tra kết nối database | Implemented |
+| Auth | POST | `/api/v1/auth/register` | Đăng ký tài khoản | Implemented |
+| Auth | POST | `/api/v1/auth/login` | Đăng nhập và lấy access token | Implemented |
+| Auth | GET | `/api/v1/auth/me` | Lấy thông tin user từ token | Implemented |
+| Topics | GET | `/api/v1/topics` | Lấy tất cả chủ đề có trong database từ bảng `topics` | Implemented |
+| User Topics | GET | `/api/v1/user-topics` | Lấy chủ đề user đang theo dõi từ bảng `user_topics` | Implemented |
+| User Topics | POST | `/api/v1/user-topics` | Theo dõi chủ đề có sẵn bằng `topic_id` | Implemented |
+| User Topics | PUT | `/api/v1/user-topics/:id` | Đổi chủ đề đang theo dõi | Implemented |
+| User Topics | DELETE | `/api/v1/user-topics/:id` | Bỏ theo dõi chủ đề | Implemented |
+| Papers | GET | `/api/v1/papers?page=1&limit=5&filter=all` | Lấy tất cả paper có phân trang | Planned Core |
+| Papers | GET | `/api/v1/papers?page=1&limit=5&filter=recent` | Lấy paper gần đây | Planned Core |
+| Papers | GET | `/api/v1/papers?page=1&limit=5&filter=2days` | Lấy paper trong 2 ngày gần đây | Planned Core |
+| Papers | GET | `/api/v1/papers/search?q=keyword&page=1&limit=10` | Search theo title, abstract, authors | Planned Core |
+| Papers | GET | `/api/v1/topics/:id/papers?page=1&limit=10` | Lấy paper theo chủ đề | Planned Core |
+| Papers | GET | `/api/v1/papers/:id` | Lấy chi tiết paper | Planned Core |
+| Papers | POST | `/api/v1/papers/:id/summarize` | Tạo/lấy summary cho paper | Planned Core |
+| Favorites | GET | `/api/v1/favorites` | Lấy paper yêu thích | Planned Core |
+| Favorites | POST | `/api/v1/papers/favorite/:id` | Lưu paper yêu thích | Planned Core |
+| Favorites | DELETE | `/api/v1/papers/favorite/:id` | Bỏ lưu paper yêu thích | Planned Core |
+| Crawler | POST | `/api/v1/crawler/run` | Trigger crawler thủ công cho dev/admin | Planned Core/Internal |
+| Related | GET | `/api/v1/papers/:id/related?limit=5` | Lấy paper liên quan từ bảng planned `related_papers` | Advanced |
+| Duplicate | GET | `/api/v1/papers/:id/matches?limit=5` | Lấy paper trùng/gần giống từ bảng planned `matching_papers` | Advanced |
+| Notifications | GET | `/api/v1/notifications` | Lấy thông báo - thực hiện sau khi có bảng `notifications` | Future/Later |
+| Notifications | PATCH | `/api/v1/notifications/:id/read` | Đánh dấu thông báo đã đọc - thực hiện sau khi có bảng `notifications` | Future/Later |
+| Stats | GET | `/api/v1/stats/topics/trends` | Lấy topic xu hướng từ cột planned `topics.trending` | Advanced |
+| Ratings | POST | `/api/v1/papers/:id/rating` | Lưu điểm vào bảng planned `paper_ratings` | Advanced |
+| Ratings | GET | `/api/v1/papers/:id/rating/me` | Lấy điểm từ bảng planned `paper_ratings` | Advanced |
 
 ---
 
@@ -1120,9 +1059,11 @@ Yêu cầu hoàn thành:
 
 ## Topic Validation
 
-- Topic name required
-- Topic name max 100 characters
-- Topic name unique
+- `GET /api/v1/topics` không nhận body, chỉ đọc danh sách chủ đề có sẵn trong bảng `topics`.
+- `POST /api/v1/user-topics` nhận `topic_id` là số nguyên dương.
+- `PUT /api/v1/user-topics/:id` nhận `topic_id` là số nguyên dương.
+- `DELETE /api/v1/user-topics/:id` dùng `:id` là topic id user đang theo dõi.
+- Backend không tạo topic mới từ tên user nhập.
 
 ---
 
@@ -1141,8 +1082,9 @@ Yêu cầu hoàn thành:
 
 ```json
 {
-    "message": "Unauthorized",
-    "statusCode": 401
+  "success": false,
+  "message": "Unauthorized",
+  "statusCode": 401
 }
 ```
 
@@ -1485,15 +1427,17 @@ Backend trả dữ liệu paper theo format Frontend dễ dùng:
     "abstract": "...",
     "summary": "...",
     "authors": ["Author A", "Author B"],
-    "published_at": "2026-05-12",
-    "pdf_url": "https://arxiv.org/pdf/..."
+    "published_date": "2026-05-12",
+    "pdf_url": "https://arxiv.org/pdf/...",
+    "topic_id": 1
 }
 ```
 
 Yêu cầu đồng bộ:
 
-- Database lưu `published_date`, API có thể trả `published_at`
+- Database lưu `published_date`, API trả thống nhất field `published_date`
 - Database lưu `pdf_url`, API trả cùng field `pdf_url`
+- Database lưu `topic_id`, API trả `topic_id` để FE lọc/nhận biết chủ đề
 - Frontend dùng thống nhất `pdf_url` thay cho `link`
 - Authors được chuẩn hóa thành array khi trả về API
 

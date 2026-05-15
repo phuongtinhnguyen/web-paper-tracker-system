@@ -182,13 +182,24 @@ backend/
 |   |   |   |-- auth.repository.js
 |   |   |   |-- auth.validation.js
 |   |   |
+|   |   |-- health/
+|   |   |   |-- health.routes.js
+|   |   |   |-- health.controller.js
+|   |   |
 |   |   |-- topics/
-|   |   |-- papers/
-|   |   |-- favorites/
-|   |   |-- search/
-|   |   |-- notifications/
-|   |   |-- stats/
-|   |   |-- ratings/
+|   |   |   |-- topic.routes.js
+|   |   |   |-- userTopic.routes.js
+|   |   |   |-- topic.controller.js
+|   |   |   |-- topic.service.js
+|   |   |   |-- topic.repository.js
+|   |   |   |-- topic.validation.js
+|   |   |
+|   |   |-- papers/          # planned core
+|   |   |-- favorites/       # planned core
+|   |   |-- search/          # planned core
+|   |   |-- notifications/   # future/later
+|   |   |-- stats/           # advanced
+|   |   |-- ratings/         # advanced
 |   |
 |   |-- integrations/
 |   |   |-- ai.client.js
@@ -536,15 +547,17 @@ Yêu cầu:
 
 ```txt
 router.use("/health", healthRoutes)
-```
-
-Sau này các feature được mount tiếp ở đây:
-
-```txt
 router.use("/auth", authRoutes)
 router.use("/topics", topicRoutes)
+router.use("/user-topics", userTopicRoutes)
+```
+
+Sau này các feature planned core được mount tiếp ở đây:
+
+```txt
 router.use("/papers", paperRoutes)
 router.use("/favorites", favoriteRoutes)
+router.use("/crawler", crawlerRoutes)
 ```
 
 Definition of done:
@@ -654,7 +667,7 @@ Bộ khung xương Backend được xem là hoàn thành khi:
 - [ ] `GET /api/v1/health/db` chạy được
 - [ ] Route không tồn tại trả lỗi 404 thống nhất
 - [ ] Error middleware trả lỗi JSON thống nhất
-- [ ] Chưa implement feature business như Auth/Topics/Papers trong giai đoạn skeleton
+- [x] Skeleton ban đầu hoàn tất; Auth và Topics đã được implement ở các bước sau
 
 ---
 
@@ -669,6 +682,22 @@ user_topics
 papers
 favorites
 ```
+
+Schema nghiệp vụ hiện tại:
+
+```txt
+users(id, email, hashed_password, full_name, created_at)
+topics(id, name)
+user_topics(user_id, topic_id)
+papers(id, arxiv_id, title, abstract, summary, authors, published_date, pdf_url, created_at, topic_id)
+favorites(user_id, paper_id, added_at)
+```
+
+Ghi chú:
+
+- `alembic_version` là bảng metadata do Alembic quản lý, không phải bảng nghiệp vụ.
+- `papers.topic_id` đã có trong DB hiện tại và liên kết tới `topics.id`.
+- `user_topics` và `favorites` là bảng quan hệ nhiều-nhiều, dùng khóa chính ghép.
 
 Các bảng cần bổ sung cho feature nâng cao:
 
@@ -689,7 +718,7 @@ notifications - thực hiện sau, DB hiện tại chưa có bảng này
 
 | DB Field | API Field | Note |
 |---|---|---|
-| `papers.published_date` | `published_at` hoặc `published_date` | Nên thống nhất một tên khi trả API |
+| `papers.published_date` | `published_date` | Thống nhất trả `published_date` theo đúng tên cột DB hiện tại |
 | `papers.pdf_url` | `pdf_url` | Frontend nên dùng `pdf_url`, không dùng `link` |
 | `papers.authors` | `authors` | API nên trả array nếu có thể |
 | `papers.topic_id` | `topic_id` | Dùng để lọc paper theo chủ đề, không cần bảng `paper_topics` |
@@ -1583,8 +1612,8 @@ DB planned:
 
 ```txt
 related_papers
-|-- paper_ID
-|-- related_paper_ID
+|-- paper_id
+|-- related_paper_id
 ```
 
 Backend đọc `related_papers`, join sang bảng `papers` để trả thông tin paper liên quan. Logic tạo dữ liệu ưu tiên paper cùng topic; paper cùng tác giả là low priority.
@@ -1629,8 +1658,8 @@ DB planned:
 
 ```txt
 matching_papers
-|-- paper_ID
-|-- related_paper_ID
+|-- paper_id
+|-- related_paper_id
 ```
 
 Python duplicate detection sẽ tạo dữ liệu vào `matching_papers`. Backend đọc bảng này và join sang `papers` để trả tên/id các paper trùng hoặc gần giống.
@@ -1776,8 +1805,8 @@ DB planned:
 
 ```txt
 paper_ratings
-|-- user_ID
-|-- paper_ID
+|-- user_id
+|-- paper_id
 |-- rating
 ```
 
@@ -1846,11 +1875,11 @@ Phần này được đồng bộ theo **BE Checklist** trong `spec.md` tổng t
 
 - [x] API đăng ký: `POST /api/v1/auth/register`
 - [x] API đăng nhập: `POST /api/v1/auth/login`
-- [ ] Sửa API đăng ký lại bổ sung thêm giờ tạo trong response nếu FE cần hiển thị
-- [ ] Hash password
-- [ ] JWT access token
-- [ ] Middleware bảo vệ protected API
-- [ ] API logout hoặc cơ chế logout phía client
+- [x] API đăng ký trả `created_at` trong response
+- [x] Hash password bằng `bcrypt`
+- [x] JWT access token
+- [x] Middleware bảo vệ protected API
+- [x] Cơ chế logout phía client: xóa token
 
 Ghi chú:
 
@@ -1999,7 +2028,7 @@ GET    /api/v1/favorites
 - [ ] API lấy paper liên quan
 - [ ] Giới hạn số lượng paper gợi ý
 - [ ] Đọc dữ liệu từ bảng planned `related_papers`
-- [ ] Join `related_papers.related_paper_ID` sang `papers.id`
+- [ ] Join `related_papers.related_paper_id` sang `papers.id`
 
 Gợi ý endpoint:
 
@@ -2048,7 +2077,7 @@ GET /api/v1/stats/topics/trends
 
 - [ ] API lưu điểm user đã chấm vào DB
 - [ ] API lấy điểm paper của user
-- [ ] Đọc/ghi bảng planned `paper_ratings(user_ID, paper_ID, rating)`
+- [ ] Đọc/ghi bảng planned `paper_ratings(user_id, paper_id, rating)`
 
 Gợi ý endpoint:
 

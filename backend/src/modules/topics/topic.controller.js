@@ -2,19 +2,25 @@ const asyncHandler = require("../../utils/asyncHandler");
 const { success } = require("../../utils/response");
 const topicService = require("./topic.service");
 
+const getAllTopics = asyncHandler(async (req, res) => {
+  const result = await topicService.getAllTopics();
+
+  return success(res, result);
+});
+
 const getMyTopics = asyncHandler(async (req, res) => {
   const result = await topicService.getMyTopics(req.user.userId);
 
   return success(res, result);
 });
 
-const createMyTopic = asyncHandler(async (req, res) => {
-  const result = await topicService.createMyTopic(
+const followMyTopic = asyncHandler(async (req, res) => {
+  const result = await topicService.followMyTopic(
     req.user.userId,
     req.validated.body
   );
 
-  return success(res, result, "Create topic successfully", 201);
+  return success(res, result, "Follow topic successfully", 201);
 });
 
 const updateMyTopic = asyncHandler(async (req, res) => {
@@ -37,8 +43,9 @@ const deleteMyTopic = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
+  getAllTopics,
   getMyTopics,
-  createMyTopic,
+  followMyTopic,
   updateMyTopic,
   deleteMyTopic,
 };

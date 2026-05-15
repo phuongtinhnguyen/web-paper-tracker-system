@@ -59,15 +59,19 @@ def summarize_pending_papers(db: Session, batch_size: int = 20):
         .all()
     )
 
+    success_count = 0
+
     for paper in papers:
         try:
             paper.summary = summarize_abstract(paper.abstract)
             db.commit()
+            success_count += 1
             print(f"[AI] Đã tóm tắt: {paper.title[:60]}...")
         except Exception as error:
+            db.rollback()
             print(f"[AI] Lỗi tóm tắt: {error}")
 
-    return len(papers)
+    return success_count
 
 
 def _build_word_freq(text: str) -> dict:

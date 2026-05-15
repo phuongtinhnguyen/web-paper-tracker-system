@@ -171,8 +171,19 @@ papers
 favorites
 ```
 
+Schema nghiệp vụ hiện tại:
+
+```txt
+users(id, email, hashed_password, full_name, created_at)
+topics(id, name)
+user_topics(user_id, topic_id)
+papers(id, arxiv_id, title, abstract, summary, authors, published_date, pdf_url, created_at, topic_id)
+favorites(user_id, paper_id, added_at)
+```
+
 Lưu ý theo DB:
 
+- `alembic_version` là bảng metadata do Alembic quản lý, không phải bảng nghiệp vụ.
 - `papers` đã có cột `topic_id`, nên API lọc paper theo chủ đề dùng trực tiếp `papers.topic_id`.
 - `favorites` dùng `user_id`, `paper_id`, `added_at`.
 - `user_topics` dùng `user_id`, `topic_id`.
@@ -216,9 +227,15 @@ Lưu ý theo DB:
 
 ### 5.2 Health APIs
 
+#### 5.2.1 GET /api/v1/health
+
+Cách gọi mẫu:
+
 ```http
 GET /api/v1/health
 ```
+
+Response mẫu:
 
 ```json
 {
@@ -231,9 +248,15 @@ GET /api/v1/health
 }
 ```
 
+#### 5.2.2 GET /api/v1/health/db
+
+Cách gọi mẫu:
+
 ```http
 GET /api/v1/health/db
 ```
+
+Response mẫu:
 
 ```json
 {
@@ -249,6 +272,8 @@ GET /api/v1/health/db
 
 #### 5.3.1 POST /api/v1/auth/register
 
+Cách gọi mẫu:
+
 ```http
 POST /api/v1/auth/register
 Content-Type: application/json
@@ -259,6 +284,8 @@ Content-Type: application/json
   "password": "123456"
 }
 ```
+
+Response mẫu:
 
 ```json
 {
@@ -277,6 +304,8 @@ Content-Type: application/json
 
 #### 5.3.2 POST /api/v1/auth/login
 
+Cách gọi mẫu:
+
 ```http
 POST /api/v1/auth/login
 Content-Type: application/json
@@ -286,6 +315,8 @@ Content-Type: application/json
   "password": "123456"
 }
 ```
+
+Response mẫu:
 
 ```json
 {
@@ -305,10 +336,14 @@ Content-Type: application/json
 
 #### 5.3.3 GET /api/v1/auth/me
 
+Cách gọi mẫu:
+
 ```http
 GET /api/v1/auth/me
 Authorization: Bearer <access_token>
 ```
+
+Response mẫu:
 
 ```json
 {
@@ -339,10 +374,14 @@ FE không cho user nhập topic tự do. `GET /api/v1/topics` lấy toàn bộ c
 
 #### 5.4.1 GET /api/v1/topics
 
+Cách gọi mẫu:
+
 ```http
 GET /api/v1/topics
 Authorization: Bearer <access_token>
 ```
+
+Response mẫu:
 
 ```json
 {
@@ -369,10 +408,14 @@ Authorization: Bearer <access_token>
 
 #### 5.4.2 GET /api/v1/user-topics
 
+Cách gọi mẫu:
+
 ```http
 GET /api/v1/user-topics
 Authorization: Bearer <access_token>
 ```
+
+Response mẫu:
 
 ```json
 {
@@ -391,6 +434,8 @@ Authorization: Bearer <access_token>
 
 #### 5.4.3 POST /api/v1/user-topics
 
+Cách gọi mẫu:
+
 ```http
 POST /api/v1/user-topics
 Authorization: Bearer <access_token>
@@ -400,6 +445,8 @@ Content-Type: application/json
   "topic_id": 2
 }
 ```
+
+Response mẫu:
 
 ```json
 {
@@ -416,6 +463,8 @@ Content-Type: application/json
 
 #### 5.4.4 PUT /api/v1/user-topics/:id
 
+Cách gọi mẫu:
+
 ```http
 PUT /api/v1/user-topics/1
 Authorization: Bearer <access_token>
@@ -425,6 +474,8 @@ Content-Type: application/json
   "topic_id": 3
 }
 ```
+
+Response mẫu:
 
 ```json
 {
@@ -441,10 +492,14 @@ Content-Type: application/json
 
 #### 5.4.5 DELETE /api/v1/user-topics/:id
 
+Cách gọi mẫu:
+
 ```http
 DELETE /api/v1/user-topics/1
 Authorization: Bearer <access_token>
 ```
+
+Response mẫu:
 
 ```json
 {
@@ -464,9 +519,19 @@ DB hiện tại: bảng `papers` đã có cột `topic_id`, nên các API lọc 
 
 FE Dashboard hiện gửi `filter` với các giá trị `all`, `recent`, `2days`.
 
+Cách gọi mẫu:
+
 ```http
 GET /api/v1/papers?page=1&limit=5&filter=recent
 ```
+
+Nếu Dashboard lọc theo topic, FE có thể gửi thêm `topic_id`:
+
+```http
+GET /api/v1/papers?page=1&limit=5&filter=recent&topic_id=1
+```
+
+Response mẫu:
 
 ```json
 {
@@ -494,19 +559,17 @@ GET /api/v1/papers?page=1&limit=5&filter=recent
 }
 ```
 
-Nếu Dashboard lọc theo topic, FE có thể gửi thêm `topic_id`:
-
-```http
-GET /api/v1/papers?page=1&limit=5&filter=recent&topic_id=1
-```
-
 #### 5.5.2 GET /api/v1/papers/search
 
 Search chung bằng `q`, backend search trong `title`, `abstract`, `authors`.
 
+Cách gọi mẫu:
+
 ```http
 GET /api/v1/papers/search?q=machine&page=1&limit=10
 ```
+
+Response mẫu:
 
 ```json
 {
@@ -536,10 +599,14 @@ GET /api/v1/papers/search?q=machine&page=1&limit=10
 
 #### 5.5.3 GET /api/v1/topics/:id/papers
 
+Cách gọi mẫu:
+
 ```http
 GET /api/v1/topics/1/papers?page=1&limit=10
 Authorization: Bearer <access_token>
 ```
+
+Response mẫu:
 
 ```json
 {
@@ -569,9 +636,13 @@ Authorization: Bearer <access_token>
 
 #### 5.5.4 GET /api/v1/papers/:id
 
+Cách gọi mẫu:
+
 ```http
 GET /api/v1/papers/1
 ```
+
+Response mẫu:
 
 ```json
 {
@@ -595,10 +666,14 @@ GET /api/v1/papers/1
 
 #### 5.5.5 POST /api/v1/papers/:id/summarize
 
+Cách gọi mẫu:
+
 ```http
 POST /api/v1/papers/1/summarize
 Authorization: Bearer <access_token>
 ```
+
+Response mẫu:
 
 ```json
 {
@@ -615,10 +690,14 @@ Authorization: Bearer <access_token>
 
 #### 5.6.1 GET /api/v1/favorites
 
+Cách gọi mẫu:
+
 ```http
 GET /api/v1/favorites?page=1&limit=10
 Authorization: Bearer <access_token>
 ```
+
+Response mẫu:
 
 ```json
 {
@@ -627,8 +706,14 @@ Authorization: Bearer <access_token>
   "data": [
     {
       "id": 1,
+      "arxiv_id": "2401.00001",
       "title": "Transformer for Stock Prediction",
+      "abstract": "This paper proposes...",
+      "summary": "Bài báo đề xuất...",
+      "authors": ["Author A", "Author B"],
+      "published_date": "2026-05-12",
       "pdf_url": "https://arxiv.org/pdf/2401.00001",
+      "topic_id": 1,
       "favorited_at": "2026-05-15T00:00:00.000Z"
     }
   ],
@@ -643,10 +728,14 @@ Authorization: Bearer <access_token>
 
 #### 5.6.2 POST /api/v1/papers/favorite/:id
 
+Cách gọi mẫu:
+
 ```http
 POST /api/v1/papers/favorite/1
 Authorization: Bearer <access_token>
 ```
+
+Response mẫu:
 
 ```json
 {
@@ -661,10 +750,14 @@ Authorization: Bearer <access_token>
 
 #### 5.6.3 DELETE /api/v1/papers/favorite/:id
 
+Cách gọi mẫu:
+
 ```http
 DELETE /api/v1/papers/favorite/1
 Authorization: Bearer <access_token>
 ```
+
+Response mẫu:
 
 ```json
 {
@@ -679,24 +772,245 @@ Authorization: Bearer <access_token>
 
 ### 5.7 Internal/Advanced APIs
 
-Các API dưới đây thuộc nhóm planned core/internal hoặc advanced:
+Các API dưới đây thuộc nhóm planned core/internal hoặc advanced.
 
-```txt
-POST  /api/v1/crawler/run
-GET   /api/v1/papers/:id/related?limit=5
-GET   /api/v1/papers/:id/matches?limit=5
-GET   /api/v1/notifications
-PATCH /api/v1/notifications/:id/read
-GET   /api/v1/stats/topics/trends
-POST  /api/v1/papers/:id/rating
-GET   /api/v1/papers/:id/rating/me
+#### 5.7.1 POST /api/v1/crawler/run
+
+Trigger crawler thủ công cho dev/admin. Endpoint này không nhất thiết mở cho user thường.
+
+Cách gọi mẫu:
+
+```http
+POST /api/v1/crawler/run
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "topic_id": 1,
+  "max_results": 20
+}
+```
+
+Response mẫu:
+
+```json
+{
+  "success": true,
+  "message": "Crawler run successfully",
+  "data": {
+    "topic_id": 1,
+    "fetched_count": 20,
+    "inserted_count": 12,
+    "skipped_duplicate_count": 8
+  }
+}
+```
+
+#### 5.7.2 GET /api/v1/papers/:id/related?limit=5
+
+Lấy paper liên quan. DB planned: `related_papers(paper_id, related_paper_id)`.
+
+Cách gọi mẫu:
+
+```http
+GET /api/v1/papers/1/related?limit=5
+```
+
+Response mẫu:
+
+```json
+{
+  "success": true,
+  "message": "OK",
+  "data": {
+    "paper_id": 1,
+    "related_papers": [
+      {
+        "id": 2,
+        "title": "Recent Advances in AI Agents",
+        "authors": ["Author C"],
+        "published_date": "2026-05-14",
+        "pdf_url": "https://arxiv.org/pdf/2401.00002",
+        "topic_id": 1
+      }
+    ]
+  }
+}
+```
+
+#### 5.7.3 GET /api/v1/papers/:id/matches?limit=5
+
+Lấy paper trùng hoặc gần giống. DB planned: `matching_papers(paper_id, related_paper_id)`. Python duplicate detection sẽ tạo dữ liệu vào bảng này.
+
+Cách gọi mẫu:
+
+```http
+GET /api/v1/papers/1/matches?limit=5
+```
+
+Response mẫu:
+
+```json
+{
+  "success": true,
+  "message": "OK",
+  "data": {
+    "paper_id": 1,
+    "matched_papers": [
+      {
+        "id": 2,
+        "title": "Recent Advances in AI Agents",
+        "pdf_url": "https://arxiv.org/pdf/2401.00002",
+        "topic_id": 1
+      }
+    ]
+  }
+}
+```
+
+#### 5.7.4 GET /api/v1/notifications
+
+Lấy danh sách thông báo của user đang login. DB hiện chưa có bảng `notifications`, nhóm này sẽ thực hiện sau.
+
+Cách gọi mẫu:
+
+```http
+GET /api/v1/notifications
+Authorization: Bearer <access_token>
+```
+
+Response mẫu:
+
+```json
+{
+  "success": true,
+  "message": "OK",
+  "data": {
+    "unread_count": 1,
+    "notifications": [
+      {
+        "id": 1,
+        "title": "Có paper mới",
+        "message": "Có 3 paper mới trong chủ đề Machine Learning",
+        "is_read": false,
+        "created_at": "2026-05-15T00:00:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+#### 5.7.5 PATCH /api/v1/notifications/:id/read
+
+Đánh dấu một thông báo là đã đọc. DB hiện chưa có bảng `notifications`, nhóm này sẽ thực hiện sau.
+
+Cách gọi mẫu:
+
+```http
+PATCH /api/v1/notifications/1/read
+Authorization: Bearer <access_token>
+```
+
+Response mẫu:
+
+```json
+{
+  "success": true,
+  "message": "Notification marked as read",
+  "data": {
+    "notification_id": 1,
+    "is_read": true
+  }
+}
+```
+
+#### 5.7.6 GET /api/v1/stats/topics/trends
+
+Lấy danh sách topic xu hướng. DB planned: cột `topics.trending`.
+
+Cách gọi mẫu:
+
+```http
+GET /api/v1/stats/topics/trends
+```
+
+Response mẫu:
+
+```json
+{
+  "success": true,
+  "message": "OK",
+  "data": {
+    "topics": [
+      {
+        "id": 1,
+        "name": "AI Agents",
+        "trending": 1,
+        "paper_count": 25
+      }
+    ]
+  }
+}
+```
+
+#### 5.7.7 POST /api/v1/papers/:id/rating
+
+Lưu điểm user chấm cho paper. DB planned: `paper_ratings(user_id, paper_id, rating)`.
+
+Cách gọi mẫu:
+
+```http
+POST /api/v1/papers/1/rating
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "rating": 4
+}
+```
+
+Response mẫu:
+
+```json
+{
+  "success": true,
+  "message": "Rate paper successfully",
+  "data": {
+    "paper_id": 1,
+    "rating": 4
+  }
+}
+```
+
+#### 5.7.8 GET /api/v1/papers/:id/rating/me
+
+Lấy điểm user đã chấm cho paper. DB planned: `paper_ratings(user_id, paper_id, rating)`.
+
+Cách gọi mẫu:
+
+```http
+GET /api/v1/papers/1/rating/me
+Authorization: Bearer <access_token>
+```
+
+Response mẫu:
+
+```json
+{
+  "success": true,
+  "message": "OK",
+  "data": {
+    "paper_id": 1,
+    "rating": 4
+  }
+}
 ```
 
 DB notes cho nhóm advanced:
 
-- `related_papers(paper_ID, related_paper_ID)` sẽ dùng cho API paper liên quan.
-- `matching_papers(paper_ID, related_paper_ID)` sẽ dùng cho API paper trùng/gần giống; Python duplicate detection tạo dữ liệu vào bảng này.
-- `paper_ratings(user_ID, paper_ID, rating)` sẽ dùng cho API chấm điểm paper.
+- `related_papers(paper_id, related_paper_id)` sẽ dùng cho API paper liên quan.
+- `matching_papers(paper_id, related_paper_id)` sẽ dùng cho API paper trùng/gần giống; Python duplicate detection tạo dữ liệu vào bảng này.
+- `paper_ratings(user_id, paper_id, rating)` sẽ dùng cho API chấm điểm paper.
 - `topics.trending` là cột planned dùng cho API thống kê topic xu hướng.
 - `notifications` hiện chưa có trong DB; nhóm thông báo sẽ thực hiện sau khi thống nhất schema hoặc cơ chế event từ crawler/DB sang BE/FE.
 

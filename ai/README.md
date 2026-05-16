@@ -1,130 +1,174 @@
-# 🤖 AI Service — Paper Tracker
+# AI Service - Paper Tracker
 
-Phần AI của hệ thống Paper Tracker, phụ trách tóm tắt paper khoa học và phát hiện paper trùng lặp.
-
-**Người phụ trách:** Nguyễn Trọng Phúc (Người 3)  
-**Branch:** `feature/ai-docs`
+Người phụ trách: Nguyễn Trọng Phúc
 
 ---
 
-## 📌 Chức năng chính
+## 1. Chức Năng Chính
 
-| Chức năng         | Mô tả                                                       |
-| ----------------- | ----------------------------------------------------------- |
-| Tóm tắt paper     | Nhận abstract tiếng Anh → trả về tóm tắt tiếng Việt 3-4 câu |
-| Tóm tắt hàng loạt | Tự động tóm tắt tất cả paper chưa có summary trong DB       |
-| Phát hiện trùng   | So sánh độ giống nhau giữa 2 paper bằng Cosine Similarity   |
+| Chức năng | Mô tả |
+| --- | --- |
+| Tóm tắt một abstract | Gọi Groq AI để tóm tắt abstract thành 3-4 câu tiếng Việt |
+| Tóm tắt batch | Lấy các paper có `summary IS NULL`, tóm tắt rồi lưu vào `papers.summary` |
+| Summary API service | FastAPI endpoint `/summarize` để Backend gọi khi cần tóm tắt on-demand |
+| Kiểm tra trùng | So sánh `title + abstract` bằng cosine similarity |
+| Script test duplicate | Chạy duplicate checker từ command line |
+| Router FastAPI | Optional/legacy, chưa phải luồng chính hiện tại |
 
 ---
 
-## 🏗️ Kiến trúc
+## 2. Cấu Trúc File Hiện Tại
 
-### 1. Kiến trúc tóm tắt paper
-
-```
-Crawler (Duy) crawl paper từ arXiv
-        │
-        ▼
-DB — paper chưa có summary
-        │
-        ▼
-summarize_pending_papers()   ← lấy paper từ DB
-        │
-        ▼
-summarize_abstract()         ← gọi Groq AI
-        │
-        ▼
-Groq AI (LLaMA 3.3 70B)     ← tóm tắt tiếng Việt
-        │
-        ▼
-DB — lưu summary lại
-        │
-        ▼
-Frontend (Diễm) hiển thị cho người dùng
+```txt
+ai/
+|-- .env                         # Chứa GROQ_API_KEY, không commit
+|-- .gitignore                   # Ignore .env, .venv, __pycache__
+|-- README.md                    # Tài liệu module AI
+|-- requirements.txt             # Thư viện Python cho AI
+|-- app.py                       # FastAPI app cho endpoint /summarize
+|-- paper_ai.py                  # Hàm summarize + duplicate checker
+|-- run_summarizer_batch.py      # Script tóm tắt batch paper chưa có summary
+|-- run_duplicate_checker.py     # Script kiểm tra trùng/gần giống từ command line
+|-- router.py                    # FastAPI router optional/legacy
 ```
 
-### 2. Kiến trúc kiểm tra trùng
+---
 
-Phần kiểm tra trùng không gọi Groq AI. Module này dùng trực tiếp function `check_duplicate()` để so sánh title + abstract của paper cần kiểm tra với các paper đã có trong DB.
+## 3. Kiến Trúc
+
+### 3.1. Luồng Tóm Tắt Paper
+
+Luồng chính vẫn là batch precompute. Backend chỉ gọi AI service khi cần fallback on-demand cho paper chưa có summary. Frontend không gọi Groq trực tiếp.
+
+Batch precompute:
+
+```txt
+Crawler thêm paper mới vào DB
+        |
+        v
+papers.summary đang NULL
+        |
+        v
+Chạy ai/run_summarizer_batch.py
+        |
+        v
+summarize_pending_papers(db, batch_size=20)
+        |
+        v
+Lấy paper chưa có summary
+        |
+        v
+summarize_abstract(abstract) gọi Groq AI
+        |
+        v
+Lưu kết quả vào papers.summary
+        |
+        v
+Backend trả summary qua GET /api/v1/papers và GET /api/v1/papers/:id
+```
+
+Fallback on-demand:
+
+```txt
+FE gọi GET /api/v1/papers/:id
+        |
+        v
+Backend thấy summary = NULL
+        |
+        v
+FE gọi POST /api/v1/papers/:id/summarize
+        |
+        v
+Backend gọi AI service POST /summarize
+        |
+        v
+summarize_abstract(abstract) gọi Groq AI
+        |
+        v
+Backend lưu summary vào papers.summary
+        |
+        v
+Backend trả summary cho FE
+```
+
+### 3.2. Luồng Kiểm Tra Trùng
+
+Duplicate checker không gọi Groq AI. Logic nằm trong `paper_ai.py`.
 
 ```txt
 Input paper mới
 (title + abstract)
-        │
-        ▼
+        |
+        v
 check_duplicate(db, title, abstract)
-        │
-        ▼
+        |
+        v
 Lấy toàn bộ paper hiện có trong DB
-        │
-        ▼
+        |
+        v
 Ghép title + abstract của từng paper
-        │
-        ▼
+        |
+        v
 _build_word_freq()
-chuyển text thành vector tần suất từ
-        │
-        ▼
+        |
+        v
 _cosine_similarity()
-tính độ giống nhau giữa paper mới và paper cũ
-        │
-        ▼
-Lọc các paper có similarity >= threshold
-        │
-        ▼
-Sắp xếp giảm dần theo similarity và giới hạn bằng limit
-        │
-        ├── similarity >= 0.90 → Trùng hoàn toàn
-        └── threshold <= similarity < 0.90 → Gần giống
-        │
-        ▼
-Trả kết quả:
-is_duplicate, match_count, highest_similarity, matches[]
+        |
+        v
+Lọc paper có similarity >= threshold
+        |
+        v
+Sắp xếp giảm dần theo similarity
+        |
+        v
+Trả về is_duplicate, match_count, highest_similarity, matches[]
 ```
+
+### 3.3. Luồng Kết Hợp Với Database Pipeline
+
+File `database/run_hourly_pipeline.py` có thể gọi lại các function trong `ai/paper_ai.py`.
+
+```txt
+database/run_hourly_pipeline.py
+        |
+        v
+Crawler arXiv
+        |
+        v
+Lưu paper mới vào DB
+        |
+        v
+check_duplicate()
+        |
+        v
+summarize_pending_papers()
+```
+
+---
+
+## 4. Setup môi trường
+
+### 4.1. Yêu Cầu
+
+- Python 3.11 khuyến nghị.
+- PostgreSQL/Neon đã có bảng `papers`.
+- `database/.env` đã có `DATABASE_URL`.
+- `ai/.env` đã có `GROQ_API_KEY` nếu chạy summary.
 
 Ghi chú:
 
-- Input chính là `title` và `abstract`.
-- Không tốn Groq token vì không gọi AI model.
-- Dùng được cho crawler để kiểm tra paper mới trước hoặc sau khi lưu DB.
-- Có thể kiểm tra paper có sẵn trong DB bằng tham số `exclude_paper_id`; function sẽ bỏ qua chính paper đó khi so sánh.
-- Có thể trả nhiều paper trùng/gần giống bằng tham số `limit`, mặc định là 5.
-- Hiện tại hàm trả kết quả trực tiếp, chưa tự lưu vào bảng `matching_papers`.
+- Duplicate checker chỉ cần DB, không cần `GROQ_API_KEY`.
+- Summary cần `GROQ_API_KEY`.
 
----
+### 4.2. Tạo Groq API Key
 
-## 📁 Cấu trúc file
-
-```
-ai-service/
-├── paper_ai.py     ← tóm tắt + phát hiện trùng
-├── run_summarizer_batch.py ← chạy batch tóm tắt paper chưa có summary
-├── router.py       ← API tìm kiếm + gợi ý liên quan
-└── README.md       ← file này
-```
-
----
-
-## ⚙️ Cài đặt
-
-### Yêu cầu
-
-- Python 3.10 - 3.12
-- PostgreSQL/Neon database đã có bảng `papers`
-- `DATABASE_URL` của database
-- `GROQ_API_KEY` để gọi Groq AI khi chạy summary
-
-Ghi chú: function kiểm tra trùng `check_duplicate()` không gọi Groq, nên chỉ cần database.
-
-### 1. Tạo Groq API key
-
-1. Truy cập https://console.groq.com
+1. Truy cập `https://console.groq.com`.
 2. Đăng nhập hoặc tạo tài khoản.
-3. Vào phần API Keys.
+3. Vào mục API Keys.
 4. Chọn Create API Key.
-5. Lưu key lại ngay sau khi tạo vì key chỉ hiển thị một lần.
+5. Lưu key ngay sau khi tạo.
 
-### 2. Cấu hình environment
+### 4.3. Cấu Hình Environment
 
 Tạo file `ai/.env`:
 
@@ -138,48 +182,47 @@ GROQ_API_KEY=gsk_...
 DATABASE_URL=postgresql://<username>:<password>@<host>/<dbname>?sslmode=require
 ```
 
-Script `run_summarizer_batch.py` sẽ tự load cả hai file:
-
-```txt
-database/.env -> DATABASE_URL
-ai/.env       -> GROQ_API_KEY
-```
-
-### 3. Cài thư viện
+### 4.4. Tạo Virtual Environment
 
 Chạy từ thư mục `ai/`:
 
-```bash
-cd ai
-python -m venv .venv
+```powershell
+py -3.11 -m venv .venv
 .\.venv\Scripts\activate
+python --version
 pip install -r requirements.txt
 ```
 
-Nếu đã có virtual environment chung của project thì chỉ cần:
+Kết quả `python --version` nên là Python 3.11.x.
 
-```bash
-cd ai
+Nếu đã có `.venv`, sau khi pull code mới nên chạy lại:
+
+```powershell
 pip install -r requirements.txt
 ```
 
 ---
 
-## 📖 Hướng dẫn sử dụng
+## 5. Hướng Dẫn Sử Dụng Summary
 
-### 1. Tóm tắt paper
+### 5.1. Chạy Batch Summary Bằng Script
 
-#### Cách 1: Chạy bằng script
-
-Đây là cách khuyên dùng cho project hiện tại.
+#### Chạy Script
 
 Chạy từ thư mục `ai/`:
 
-```bash
+```powershell
 python run_summarizer_batch.py --batch-size 20
 ```
 
-Output mẫu:
+Ý nghĩa:
+
+- Lấy tối đa 20 paper có `summary IS NULL`.
+- Gọi Groq AI để tóm tắt abstract.
+- Lưu kết quả vào `papers.summary`.
+- In số paper tóm tắt thành công.
+
+Output Mẫu Khi Chạy Script
 
 ```txt
 [AI] Đã tóm tắt: Transformer for Stock Prediction...
@@ -187,31 +230,52 @@ Output mẫu:
 [AI] Summarized 20 pending papers.
 ```
 
-Ý nghĩa:
+### 5.2. Chạy FastAPI Summary Service Cho Backend
 
-- Lấy tối đa 20 paper chưa có summary.
-- Gọi Groq AI để tóm tắt abstract.
-- Lưu kết quả vào `papers.summary`.
-- In log số paper đã xử lý.
+Chạy từ thư mục `ai/`:
 
-Ví dụ chạy ít hơn để test:
-
-```bash
-python run_summarizer_batch.py --batch-size 3
+```powershell
+python -m uvicorn app:app --host 0.0.0.0 --port 8001 --reload
 ```
 
-Output mẫu:
+Service mặc định chạy ở:
 
 ```txt
-[AI] Đã tóm tắt: Transformer for Stock Prediction...
-[AI] Summarized 3 pending papers.
+http://localhost:8001
 ```
 
-#### Cách 2: Gọi function trực tiếp
+Backend sẽ gọi service này thông qua biến môi trường:
 
-Cách này phù hợp khi test nhanh hoặc khi muốn gọi từ một script Python khác.
+```env
+AI_SERVICE_URL=http://localhost:8001
+```
 
-##### Tóm tắt một abstract
+Test endpoint summary:
+
+```http
+POST http://localhost:8001/summarize
+Content-Type: application/json
+
+{
+  "abstract": "This paper proposes a transformer-based method for paper recommendation."
+}
+```
+
+Response mẫu:
+
+```json
+{
+  "success": true,
+  "message": "Summarize successfully",
+  "data": {
+    "summary": "Bài báo đề xuất một phương pháp dựa trên transformer cho hệ thống gợi ý paper. Phương pháp tập trung học biểu diễn nội dung từ abstract để cải thiện khả năng đề xuất. Kết quả cho thấy hướng tiếp cận này có tiềm năng hỗ trợ người dùng tìm paper liên quan hiệu quả hơn."
+  }
+}
+```
+
+### 5.3. Chạy Summary Bằng Gọi Function Trực Tiếp
+
+#### 5.3.1. Gọi Function Tóm Tắt Một Abstract
 
 ```python
 from paper_ai import summarize_abstract
@@ -227,9 +291,9 @@ Response mẫu:
 Paper này đề xuất một phương pháp dựa trên transformer để giải quyết bài toán dự đoán. Phương pháp chính sử dụng cơ chế attention để học quan hệ trong dữ liệu. Kết quả cho thấy mô hình có tiềm năng cải thiện độ chính xác so với các phương pháp truyền thống.
 ```
 
-##### Tóm tắt nhiều paper chưa có summary
+#### 5.3.2. Gọi Function Tóm Tắt Nhiều Paper
 
-Nếu chạy từ thư mục gốc project, có thể dùng mẫu sau:
+Nếu chạy từ thư mục gốc project, dùng mẫu sau:
 
 ```python
 from pathlib import Path
@@ -257,7 +321,7 @@ finally:
     db.close()
 ```
 
-Response mẫu:
+Output mẫu:
 
 ```txt
 [AI] Đã tóm tắt: Transformer for Stock Prediction...
@@ -265,22 +329,15 @@ Response mẫu:
 Đã tóm tắt 20 papers
 ```
 
-### 2. Kiểm tra paper trùng hoặc gần giống
+---
 
-#### Cách 1: Chạy script test local
+## 6. Hướng Dẫn Sử Dụng Duplicate Checker
 
-Cách này dùng để kiểm tra nhanh logic duplicate checker bằng dữ liệu thật trong bảng `papers`.
+### 6.1. Chạy Duplicate Checker Bằng Script
 
-Chuẩn bị môi trường từ thư mục `ai/`:
+#### 6.1.1 Chạy Duplicate Checker Bằng Script - paper id
 
-```powershell
-python -m venv .venv
-.\.venv\Scripts\activate
-python --version
-pip install -r requirements.txt
-```
-
-Kiểm tra paper có `id = 1` có bị trùng với paper nào trong DB không:
+Chạy từ thư mục `ai/`:
 
 ```powershell
 python run_duplicate_checker.py --paper-id 1 --exclude-self --threshold 0.3 --limit 10
@@ -288,12 +345,12 @@ python run_duplicate_checker.py --paper-id 1 --exclude-self --threshold 0.3 --li
 
 Ý nghĩa tham số:
 
-- `--paper-id 1`: lấy title và abstract của paper id 1 làm dữ liệu đầu vào.
-- `--exclude-self`: không cho paper id 1 tự match chính nó.
-- `--threshold 0.3`: ngưỡng giống nhau tối thiểu, càng thấp càng dễ match.
-- `--limit 10`: trả tối đa 10 paper trùng hoặc gần giống.
+- `--paper-id 1`: lấy `title` và `abstract` của paper id 1 làm input.
+- `--exclude-self`: bỏ qua chính paper id 1 khi so sánh.
+- `--threshold 0.3`: ngưỡng giống nhau tối thiểu.
+- `--limit 10`: trả tối đa 10 paper trùng/gần giống.
 
-Response mẫu:
+Response Mẫu Khi Có Paper Gần Giống
 
 ```json
 {
@@ -321,15 +378,13 @@ Response mẫu:
 }
 ```
 
-Test bằng title và abstract tự nhập:
+#### 6.1.2 Chạy Duplicate Checker Bằng Script - title và abstract tự nhập
 
 ```powershell
 python run_duplicate_checker.py --title "Transformer for natural language processing" --abstract "This paper studies transformer models for language understanding." --threshold 0.3 --limit 5
 ```
 
-#### Cách 2: Gọi function trực tiếp
-
-Có thể dùng chung phần cấu hình `sys.path`, `load_dotenv` và `SessionLocal` ở ví dụ trên, sau đó gọi function trực tiếp:
+### 6.2. Gọi Function Duplicate Checker Trực Tiếp
 
 ```python
 from paper_ai import check_duplicate
@@ -345,7 +400,7 @@ result = check_duplicate(
 print(result)
 ```
 
-Response mẫu nếu trùng:
+Response Mẫu Khi Trùng
 
 ```python
 {
@@ -371,7 +426,7 @@ Response mẫu nếu trùng:
 }
 ```
 
-Response mẫu nếu không trùng:
+Response Mẫu Khi Không Trùng
 
 ```python
 {
@@ -384,27 +439,75 @@ Response mẫu nếu không trùng:
 
 ---
 
-## 🌐 API Endpoints
+## 7. API Endpoints
 
-### Trạng thái hiện tại
+### 7.1. Trạng Thái Hiện Tại
 
-Các endpoint trong `ai/router.py` là **FastAPI router optional/legacy**, chưa phải luồng chính hiện tại của project.
-
-Luồng chính đang dùng:
+Endpoint chính hiện tại của AI service là:
 
 ```txt
-Summary:
-AI chạy script batch -> ghi vào papers.summary -> Backend Node.js trả dữ liệu cho FE
-
-Duplicate check:
-Python code gọi trực tiếp function check_duplicate()
+POST /summarize
 ```
 
-Vì vậy FE không nên gọi thẳng `ai/router.py`. FE nên gọi Backend Node.js. Sau này nếu cần expose AI API riêng, có thể dùng lại các endpoint bên dưới.
+Endpoint này dùng cho Backend Node.js gọi khi cần tóm tắt on-demand. Frontend không gọi AI service trực tiếp.
 
-### Muốn dùng `ai/router.py` thì cần gì?
+Các endpoint trong `ai/router.py` vẫn là optional/legacy.
 
-`ai/router.py` hiện chỉ khai báo `APIRouter`, chưa có `FastAPI app` để chạy trực tiếp. File này cũng đang phụ thuộc cấu trúc FastAPI cũ:
+### 7.2. POST /summarize
+
+Tóm tắt một abstract thành tiếng Việt.
+
+Cách gọi:
+
+```http
+POST http://localhost:8001/summarize
+Content-Type: application/json
+
+{
+  "abstract": "This paper proposes a transformer-based method for paper recommendation."
+}
+```
+
+Response mẫu:
+
+```json
+{
+  "success": true,
+  "message": "Summarize successfully",
+  "data": {
+    "summary": "Bài báo đề xuất một phương pháp dựa trên transformer cho hệ thống gợi ý paper. Phương pháp tập trung học biểu diễn nội dung từ abstract để cải thiện khả năng đề xuất. Kết quả cho thấy hướng tiếp cận này có tiềm năng hỗ trợ người dùng tìm paper liên quan hiệu quả hơn."
+  }
+}
+```
+
+Response lỗi mẫu:
+
+```json
+{
+  "detail": "Abstract is required"
+}
+```
+
+### 7.3. Router Optional/Legacy
+
+Các endpoint trong `ai/router.py` là FastAPI router optional/legacy, chưa phải luồng chính hiện tại của project.
+
+Luồng chính hiện tại:
+
+```txt
+FE -> Backend Node.js -> PostgreSQL
+AI summary chạy batch riêng
+Backend gọi AI service POST /summarize khi cần fallback
+AI duplicate checker dùng function trong Python
+```
+
+Frontend không nên gọi thẳng `ai/router.py`. Frontend nên gọi Backend Node.js.
+
+### 7.4. Điều Kiện Nếu Muốn Dùng `ai/router.py`
+
+`ai/router.py` hiện chỉ khai báo `APIRouter`, chưa có `FastAPI app` để chạy trực tiếp.
+
+File này cũng đang phụ thuộc các thành phần chưa được wire đầy đủ trong folder `ai/`:
 
 ```txt
 database.get_db
@@ -413,13 +516,13 @@ papers.schemas.PaperList
 papers.schemas.PaperOut
 ```
 
-Trong repo hiện tại, các phần trên chưa được wire đầy đủ trong folder `ai/`, nên **không chạy trực tiếp bằng**:
+Vì vậy không chạy trực tiếp bằng:
 
 ```bash
-uvicorn router:app --reload
+python -m uvicorn router:app --reload
 ```
 
-Nếu muốn dùng thật, cần tạo một file app, ví dụ `ai/main.py`:
+Nếu muốn dùng thật, cần tạo file `ai/main.py`:
 
 ```python
 from fastapi import FastAPI
@@ -433,12 +536,12 @@ Sau đó chạy:
 
 ```bash
 cd ai
-uvicorn main:app --reload --port 8001
+python -m uvicorn main:app --reload --port 8001
 ```
 
-### Endpoint 1: Tìm kiếm paper
+### 7.5. Endpoint Tìm Kiếm Paper
 
-Khi router được mount với prefix `/api/search`, endpoint là:
+Khi router được mount với prefix `/api/search`:
 
 ```http
 GET /api/search?q=transformer&page=1&per_page=20
@@ -447,9 +550,9 @@ Authorization: Bearer <token>
 
 Mục đích:
 
-- Search keyword trong `title`
-- Search keyword trong `abstract`
-- Search keyword trong `authors`
+- Search keyword trong `title`.
+- Search keyword trong `abstract`.
+- Search keyword trong `authors`.
 
 Response mẫu:
 
@@ -474,7 +577,7 @@ Response mẫu:
 }
 ```
 
-### Endpoint 2: Gợi ý paper liên quan
+### 7.6. Endpoint Gợi Ý Paper Liên Quan
 
 ```http
 GET /api/search/related/1?limit=5
@@ -483,10 +586,10 @@ Authorization: Bearer <token>
 
 Mục đích:
 
-- Lấy paper gốc theo `paper_id`
-- Tách keyword từ title
-- Tìm paper khác có title/tác giả gần liên quan
-- Trả tối đa `limit` paper
+- Lấy paper gốc theo `paper_id`.
+- Tách keyword từ title.
+- Tìm paper khác có title/tác giả liên quan.
+- Trả tối đa `limit` paper.
 
 Response mẫu:
 
@@ -506,7 +609,7 @@ Response mẫu:
 ]
 ```
 
-### Endpoint 3: Kiểm tra paper trùng
+### 7.7. Endpoint Kiểm Tra Paper Trùng
 
 ```http
 POST /api/search/check-duplicate
@@ -523,12 +626,6 @@ Body mẫu:
 }
 ```
 
-Mục đích:
-
-- Nhận `title` và `abstract`
-- Gọi function `check_duplicate()`
-- Trả danh sách paper trùng/gần giống trong field `matches`
-
 Response mẫu:
 
 ```json
@@ -543,128 +640,67 @@ Response mẫu:
       "pdf_url": "https://arxiv.org/pdf/2401.00002",
       "similarity": 91.29,
       "status": "Trùng hoàn toàn"
-    },
-    {
-      "id": 5,
-      "title": "Deep Learning for Stock Prediction",
-      "pdf_url": "https://arxiv.org/pdf/2401.00005",
-      "similarity": 78.5,
-      "status": "Gần giống"
     }
   ]
 }
 ```
 
-### Khuyến nghị cho project hiện tại
+---
 
-Với kiến trúc hiện tại, nên ưu tiên:
+## 8. Thuật Toán Phát Hiện Trùng
+
+### 8.1. Ý Tưởng
+
+Duplicate checker dùng cosine similarity để đo độ giống nhau giữa hai văn bản.
+
+Input text:
 
 ```txt
-FE -> Backend Node.js -> PostgreSQL
-AI summary chạy batch riêng
-AI duplicate check dùng function check_duplicate() trong Python/crawler
+title + abstract
 ```
 
-Không cần chạy `ai/router.py` nếu chưa triển khai một FastAPI service riêng.
+Sau đó chuyển thành vector tần suất từ:
+
+```txt
+"transformer stock prediction" -> {"transformer": 1, "stock": 1, "prediction": 1}
+```
+
+### 8.2. Công Thức
+
+```txt
+similarity = dot_product(A, B) / (|A| * |B|)
+```
+
+### 8.3. Phân Loại Kết Quả
+
+```txt
+>= 90%      -> Trùng hoàn toàn
+75% - 90%  -> Gần giống
+< 75%      -> Khác nhau
+```
+
+### 8.4. Lý Do Không Dùng AI Cho Duplicate Checker
+
+- Chạy nhanh hơn.
+- Không tốn Groq token.
+- Dễ chạy batch trong crawler.
+- Dễ debug vì kết quả dựa trên similarity score.
 
 ---
 
-## 🧠 Thuật toán phát hiện trùng
+## 9. Model AI Sử Dụng
 
-Sử dụng **Cosine Similarity** — đo độ giống nhau giữa 2 văn bản:
-
-**Bước 1** — Chuyển text thành vector tần suất từ:
-
-```
-"transformer stock prediction" → {"transformer": 1, "stock": 1, "prediction": 1}
-```
-
-**Bước 2** — Tính Cosine Similarity:
-
-```
-similarity = dot_product(A, B) / (|A| × |B|)
-```
-
-**Bước 3** — Phân loại kết quả:
-
-```
-≥ 90%       → Trùng hoàn toàn
-75% - 90%   → Gần giống
-< 75%       → Khác nhau
-```
-
-**Lý do chọn Cosine Similarity thay vì AI:**
-
-- Nhanh hơn (không cần gọi API)
-- Miễn phí hoàn toàn
-- Tiết kiệm Groq token cho việc tóm tắt
+| Thông tin | Chi tiết |
+| --- | --- |
+| Dịch vụ | Groq |
+| Model | `llama-3.3-70b-versatile` |
+| Nhiệm vụ | Tóm tắt abstract |
+| Output | Summary tiếng Việt 3-4 câu |
 
 ---
 
-## 🤖 Model AI sử dụng
+## 10. Liên Kết
 
-| Thông tin   | Chi tiết                |
-| ----------- | ----------------------- |
-| Dịch vụ     | Groq (miễn phí)         |
-| Model       | LLaMA 3.3 70B Versatile |
-| Giới hạn    | 100,000 tokens/ngày     |
-| 1 paper tốn | ~700 tokens             |
-| Tối đa/ngày | ~140 papers             |
-
----
-
-## 🧪 Test nhanh
-
-```bash
-# Chạy từ thư mục ai/
-
-# Test tóm tắt
-python -c "
-from paper_ai import summarize_abstract
-print(summarize_abstract('We propose a transformer for stock prediction.'))
-"
-
-# Test phát hiện trùng
-python -c "
-from paper_ai import _build_word_freq, _cosine_similarity
-a = _build_word_freq('transformer stock prediction deep learning')
-b = _build_word_freq('transformer stock prediction deep learning neural')
-print(round(_cosine_similarity(a, b)*100, 2), '%')
-"
-```
-
----
-
-## 📊 Ví dụ kết quả thực tế
-
-**Tóm tắt:**
-
-```
-Input:  "We propose a novel transformer-based architecture for
-         time series forecasting..."
-
-Output: "Paper đề xuất kiến trúc dựa trên transformer để dự báo
-         chuỗi thời gian. Phương pháp sử dụng cơ chế self-attention
-         để nắm bắt mối quan hệ dài hạn. Kết quả đạt SOTA trên
-         5 bộ dữ liệu benchmark."
-```
-
-**Phát hiện trùng:**
-
-```
-Paper A: "Transformer for Stock Prediction Using Deep Learning"
-Paper B: "Transformer Stock Prediction Deep Learning Neural"
-→ Độ giống nhau: 91.29% → Trùng hoàn toàn!
-
-Paper A: "Transformer for Stock Prediction"
-Paper B: "CNN for Image Classification"
-→ Độ giống nhau: 12.3% → Khác nhau
-```
-
----
-
-## 🔗 Liên kết
-
-- [Groq Console](https://console.groq.com)
-- [LLaMA Model Info](https://console.groq.com/docs/models)
-- [arXiv API](https://arxiv.org/help/api)
+- Groq Console: `https://console.groq.com`
+- Groq Models: `https://console.groq.com/docs/models`
+- arXiv API: `https://arxiv.org/help/api`

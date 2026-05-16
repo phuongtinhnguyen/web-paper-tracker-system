@@ -86,26 +86,26 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 - [x] Màn hình đăng ký
 - [x] Màn hình đăng nhập
 - [x] Lưu token/username sau khi đăng nhập thành công
-- [ ] Form đăng ký gọi API đăng ký
-- [ ] Form đăng nhập gọi API đăng nhập
-- [ ] Chặn protected pages khi user chưa đăng nhập
+- [x] Form đăng ký gọi API đăng ký
+- [x] Form đăng nhập gọi API đăng nhập
+- [x] Chặn protected pages khi user chưa đăng nhập
 
 ### Thêm, sửa, xoa chủ đề theo dõi
 
 - [x] UI thêm chủ đề theo dõi
 - [x] UI xóa chủ đề theo dõi
-- [ ] Call API thêm chủ đề theo dõi
-- [ ] Call API xóa chủ đề theo dõi
-- [ ] Sửa tên lại thành "Chủ đề theo dõi"
-- [ ] Sửa "Trang quản lý topic" thành "Trang quản lý chủ đề"
+- [x] Call API thêm chủ đề theo dõi
+- [x] Call API xóa chủ đề theo dõi
+- [x] Sửa tên lại thành "Chủ đề theo dõi"
+- [x] Sửa "Trang quản lý topic" thành "Trang quản lý chủ đề"
 - [ ] UI sửa chủ đề theo dõi - Low priority
 - [ ] Call API sửa chủ đề theo dõi - Low priority
 
 ### Tự động lấy paper mới theo chủ đề
 
 - [x] UI Trang quản lý chủ đề đầy đủ
-- [ ] Nhấn vào chủ đề trong trang "Quản lý chủ đề" hiển thị các chủ đề ra theo thứ tự ngày tạo gần nhất
-- [ ] Nhấn vào chủ đề trong trang "Chủ đề theo dõi" hiển thị các chủ đề ra theo thứ tự ngày tạo gần nhất
+- [x] Nhấn vào chủ đề trong trang "Quản lý chủ đề" hiển thị paper theo ngày gần nhất
+- [x] Nhấn vào chủ đề trong trang "Chủ đề theo dõi" hiển thị paper theo ngày gần nhất
 - [ ] UI refresh/reload danh sách sau khi crawler có paper mới - Low Priority
 
 ### Lưu thông tin paper: tiêu đề, abstract, tác giả, ngày công bố, link
@@ -118,39 +118,42 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 
 ### Tom tắt ngắn ý chính của paper từ abstract
 
-- [ ] Hiển thị summary trên paper card
+- [x] Hiển thị summary trên paper card
+- [x] Hiển thị trạng thái đang tạo summary ở trang chi tiết
+- [x] FE gọi API fallback summary khi `summary` đang `NULL`: `POST /api/v1/papers/:id/summarize`
 
 
 ### Hien thị danh sách paper mới
 
 - [x] Filter "Bài báo gần đây"
 - [x] Filter "Bài báo 2 ngày gần đây"
-- [ ] Gọi API lấy danh sách paper "Bài báo gần đây"
-- [ ] Gọi API lấy danh sách paper "Bài báo 2 ngày gần đây"
-- [ ] Pagination hoặc load more cho danh sách paper mới
+- [x] Gọi API lấy danh sách paper "Bài báo gần đây"
+- [x] Gọi API lấy danh sách paper "Bài báo 2 ngày gần đây"
+- [x] Pagination hoặc load more cho danh sách paper mới
 
 ### Tim kiếm, lọc paper theo từ khoa hoặc chủ đề
 
 - [x] SearchBar nhập từ khóa
-- [ ] Gọi API search theo title
-- [ ] Gọi API search theo abstract
-- [ ] Gọi API search theo authors
-- [ ] App lưu search query ở state
+- [x] Gọi API search theo title
+- [x] Gọi API search theo abstract
+- [x] Gọi API search theo authors
+- [x] App lưu search query ở state
 
 ### Xem chi tiết paper
 
-- [ ] UI Trang chi tiết paper theo abstract
-- [ ] Gọi API trả về tiêu đề, abstract, tác giả, ngày công bố, url paper
-- [ ] Hiển thị abstract, summary, tác giả, ngày công bố và link paper và những bài báo liên quan
+- [x] UI Trang chi tiết paper theo abstract
+- [x] Gọi API trả về tiêu đề, abstract, tác giả, ngày công bố, url paper
+- [x] Hiển thị abstract, summary, tác giả, ngày công bố và link paper
+- [ ] Hiển thị những bài báo liên quan
 
 ### Luu paper yêu thích
 
 - [x] UI PaperCard có nút favorite
 - [x] Sidebar có navigation tới mục yêu thích
-- [ ] Gọi API lưu paper yêu thích
-- [ ] Gọi API bỏ lưu paper yêu thích
-- [ ] UI Trang danh sách paper yêu thích
-- [ ] Gọi API hiển thị danh sách paper yêu thích của user đang login
+- [x] Gọi API lưu paper yêu thích
+- [x] Gọi API bỏ lưu paper yêu thích
+- [x] UI Trang danh sách paper yêu thích
+- [x] Gọi API hiển thị danh sách paper yêu thích của user đang login
 
 
 ### Chưa cần làm ở sprint 1
@@ -225,9 +228,10 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 
 - [x] BE trả field `summary` từ DB trong API danh sách paper: `GET /api/v1/papers`
 - [x] BE trả field `summary` từ DB trong API chi tiết paper: `GET /api/v1/papers/:id`
+- [x] API fallback tóm tắt on-demand khi summary đang `NULL`: `POST /api/v1/papers/:id/summarize`
 - [x] AI có batch function ghi summary vào DB: `summarize_pending_papers(db, batch_size=20)`
 - [x] Có script chạy batch summary: `python ai/run_summarizer_batch.py --batch-size 20`
-- [ ] Cấu hình lịch chạy batch sau khi crawler thêm paper mới - Low Priority
+- [x] Cấu hình pipeline chạy batch sau khi crawler thêm paper mới: `database/run_hourly_pipeline.py`
 
 ### Hien thị danh sách paper mới
 
@@ -326,11 +330,12 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 - [ ] Bảng `matching_papers`
 - [ ] Cột `paper_id`
 - [ ] Cột `related_paper_id`
-- [ ] Tìm paper trùng hoặc gần giống bằng python
+- [x] Tìm paper trùng hoặc gần giống bằng python
 
 ### Nâng cao - Gửi thong bao khi co paper mới
 
-- [ ] Server DB/crawler cào data theo giờ + gửi event cho FE/BE sau khi cào xong
+- [x] Server DB/crawler cào data theo giờ bằng `database/run_hourly_pipeline.py`
+- [ ] Gửi event cho FE/BE sau khi cào xong
 - [ ] Bảng `notifications` sẽ thực hiện sau, DB hiện tại chưa có bảng này
 
 ### Nâng cao - Thong ke xu hưong theo chủ đề
@@ -372,6 +377,7 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 - [x] Gọi Groq API với model `llama-3.3-70b-versatile`
 - [x] Hàm `summarize_pending_papers`
 - [x] Ghi summary vào paper thiếu summary
+- [x] FastAPI endpoint tóm tắt on-demand: `POST /summarize`
 
 ### Hien thị danh sách paper mới
 
@@ -399,6 +405,7 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 - [x] Hàm `_build_word_freq`
 - [x] Hàm `_cosine_similarity`
 - [x] Hàm `check_duplicate` trả nhiều paper gần giống qua field `matches`
+- [x] Script chạy duplicate checker: `python ai/run_duplicate_checker.py`
 - [ ] Lưu kết quả kiểm tra trùng vào bảng planned `matching_papers`
 
 ### Nâng cao - Gửi thong bao khi co paper mới
@@ -904,6 +911,7 @@ Frontend và Backend thống nhất một base URL khi tích hợp.
 | Papers | GET | `/api/v1/papers?page=1&limit=5&topic_id=1` | Lọc paper theo chủ đề bằng `papers.topic_id` | Implemented |
 | Papers | GET | `/api/v1/papers/search?q=keyword&page=1&limit=10` | Search theo title, abstract, authors | Implemented |
 | Papers | GET | `/api/v1/papers/:id` | Lấy chi tiết paper, bao gồm field `summary` từ DB | Implemented |
+| Papers | POST | `/api/v1/papers/:id/summarize` | Tóm tắt on-demand khi `summary` đang `NULL` | Implemented |
 | Favorites | GET | `/api/v1/favorites` | Lấy paper yêu thích | Implemented |
 | Favorites | POST | `/api/v1/papers/favorite/:id` | Lưu paper yêu thích | Implemented |
 | Favorites | DELETE | `/api/v1/papers/favorite/:id` | Bỏ lưu paper yêu thích | Implemented |

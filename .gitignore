@@ -146,3 +146,14 @@ vite.config.ts.timestamp-*
 __pycache__/
 *.pyc
 venv/
+.venv/
+venv/
+env/
+ENV/
+
+*.py[cod]
+.pytest_cache/
+
+# Env files
+.env
+.env.*

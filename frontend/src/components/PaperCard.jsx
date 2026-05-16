@@ -9,10 +9,12 @@ export default function PaperCard({ paper, onToggleFavorite, isFavorite }) {
 
   // Xử lý logic parse danh sách tác giả
   const getAuthors = () => {
+    const rawAuthors = paper.authors ?? paper.author;
+
     try {
-      return typeof paper.author === 'string' ? JSON.parse(paper.author) : paper.author;
+      return typeof rawAuthors === "string" ? JSON.parse(rawAuthors) : rawAuthors;
     } catch {
-      return [paper.author];
+      return rawAuthors ? [rawAuthors] : [];
     }
   };
 

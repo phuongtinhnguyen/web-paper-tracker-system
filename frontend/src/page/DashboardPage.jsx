@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Loader2, ChevronDown, ListFilter } from "lucide-react";
+import { Loader2, ChevronDown, ListFilter } from "lucide-react";
 import PaperCard from "../components/PaperCard";
+import Pagination from "../components/Pagination";
 import { getPapers, searchPapers, addFavorite, removeFavorite } from "../services/API";
 import SearchBar from "../components/SearchBar";
 
@@ -204,41 +205,11 @@ export default function DashboardPage({ searchQuery }) {
           </div>
 
           {/* Phân trang */}
-          {totalPages > 1 && (
-            <div className="flex justify-center items-center gap-2 mt-10">
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                disabled={currentPage === 1}
-                className="p-2 rounded-xl border border-gray-200 bg-white hover:bg-emerald-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronLeft size={20} />
-              </button>
-
-              <div className="flex items-center gap-1">
-                {[...Array(totalPages)].map((_, i) => (
-                  <button
-                    key={i + 1}
-                    onClick={() => setCurrentPage(i + 1)}
-                    className={`w-10 h-10 rounded-xl text-sm font-bold transition-all ${
-                      currentPage === i + 1
-                        ? "bg-emerald-600 text-white shadow-md shadow-emerald-100"
-                        : "bg-white border border-gray-100 text-gray-400 hover:border-emerald-500 hover:text-emerald-600"
-                    }`}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-              </div>
-
-              <button
-                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="p-2 rounded-xl border border-gray-200 bg-white hover:bg-emerald-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronRight size={20} />
-              </button>
-            </div>
-          )}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
         </>
       )}
     </div>

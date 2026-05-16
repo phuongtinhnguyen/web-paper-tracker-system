@@ -107,10 +107,25 @@ async function searchPapers({ q, page, limit }) {
   };
 }
 
+async function updatePaperSummary(id, summary) {
+  const result = await query(
+    `UPDATE papers
+     SET summary = $1
+     WHERE id = $2
+     RETURNING id, arxiv_id, title, abstract, summary, authors,
+               published_date, pdf_url, created_at, topic_id`,
+    [summary, id]
+  );
+
+  return result.rows[0] || null;
+}
+
 
 module.exports = {
   getPapers,
   getPaperById,
   searchPapers,
+  updatePaperSummary,
 };
+
 

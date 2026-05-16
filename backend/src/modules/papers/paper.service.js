@@ -1,5 +1,7 @@
 const paperRepository = require("./paper.repository");
 const AppError = require("../../utils/appError");
+const axios = require("axios");
+const env = require("../../config/env");
 
 function normalizeAuthors(authors) {
   if (!authors) {
@@ -70,9 +72,48 @@ async function searchPapers(query) {
   };
 }
 
+async function summarizePaper(id) {
+  const paper = await paperRepository.getPaperById(id);
+
+  if (!paper) {
+    throw new AppError("Paper not found", 404);
+  }
+
+  if (paper.summary) {
+    return {
+      paper_id: paper.id,
+      summary: paper.summary,
+      source: "database",
+    };
+  }
+
+  if (!paper.abstract) {
+    throw new AppError("Paper abstract is empty", 400);
+  }
+
+  const aiResponse = await axios.post(`${env.aiServiceUrl}/summarize`, {
+    abstract: paper.abstract,
+  });
+
+  const summary = aiResponse.data?.data?.summary;
+
+  if (!summary) {
+    throw new AppError("AI service did not return summary", 502);
+  }
+
+  await paperRepository.updatePaperSummary(id, summary);
+
+  return {
+    paper_id: paper.id,
+    summary,
+    source: "ai_service",
+  };
+}
+
 
 module.exports = {
   getPapers,
   getPaperById,
   searchPapers,
+  summarizePaper,
 };

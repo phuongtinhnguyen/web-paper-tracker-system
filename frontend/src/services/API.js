@@ -42,6 +42,10 @@ export const getPapers = (params = {}) =>
 export const getPaperById = (id) =>
   api.get(`/papers/${id}`);
 
+/** POST /papers/:id/summarize  → { paper_id, summary, source } */
+export const summarizePaper = (id) =>
+  api.post(`/papers/${id}/summarize`);
+
 /**
  * GET /papers/search?q=keyword&page=1&limit=10
  * → { data: Paper[], pagination }
@@ -65,13 +69,13 @@ export const getPapersByTopic = (topicId, params = {}) =>
 export const getFavorites = (params = {}) =>
   api.get("/favorites", { params });
 
-/** POST /favorites/:paperId  → { message } */
+/** POST /papers/favorite/:paperId  → { paper_id, is_favorite } */
 export const addFavorite = (paperId) =>
-  api.post(`/favorites/${paperId}`);
+  api.post(`/papers/favorite/${paperId}`);
 
-/** DELETE /favorites/:paperId  → { message } */
+/** DELETE /papers/favorite/:paperId  → { paper_id, is_favorite } */
 export const removeFavorite = (paperId) =>
-  api.delete(`/favorites/${paperId}`);
+  api.delete(`/papers/favorite/${paperId}`);
 
 // ── HISTORY ──────────────────────────────────────────────────────────────────
 

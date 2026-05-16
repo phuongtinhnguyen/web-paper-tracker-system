@@ -24,10 +24,18 @@ const searchPapers = asyncHandler(async (req, res) => {
   return paginated(res, papers, pagination, "Search papers successfully");
 });
 
+const summarizePaper = asyncHandler(async (req, res) => {
+  const result = await paperService.summarizePaper(req.validated.params.id);
+
+  return success(res, result, "Summarize paper successfully");
+});
+
 
 module.exports = {
   getPapers,
   getPaperById,
   searchPapers,
+  summarizePaper,
 };
+
 

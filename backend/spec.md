@@ -649,24 +649,24 @@ Kết quả mong đợi:
 
 Bộ khung xương Backend được xem là hoàn thành khi:
 
-- [ ] Có `src/server.js`
-- [ ] Có `src/app.js`
-- [ ] Có `src/config/env.js`
-- [ ] Có `src/config/db.js`
-- [ ] Có `src/routes/index.routes.js`
-- [ ] Có `src/modules/health/health.routes.js`
-- [ ] Có `src/modules/health/health.controller.js`
-- [ ] Có `src/utils/appError.js`
-- [ ] Có `src/utils/asyncHandler.js`
-- [ ] Có `src/utils/response.js`
-- [ ] Có `src/middlewares/notFound.middleware.js`
-- [ ] Có `src/middlewares/error.middleware.js`
-- [ ] Có `src/middlewares/validate.middleware.js`
-- [ ] `npm run dev` chạy được
-- [ ] `GET /api/v1/health` chạy được
-- [ ] `GET /api/v1/health/db` chạy được
-- [ ] Route không tồn tại trả lỗi 404 thống nhất
-- [ ] Error middleware trả lỗi JSON thống nhất
+- [x] Có `src/server.js`
+- [x] Có `src/app.js`
+- [x] Có `src/config/env.js`
+- [x] Có `src/config/db.js`
+- [x] Có `src/routes/index.routes.js`
+- [x] Có `src/modules/health/health.routes.js`
+- [x] Có `src/modules/health/health.controller.js`
+- [x] Có `src/utils/appError.js`
+- [x] Có `src/utils/asyncHandler.js`
+- [x] Có `src/utils/response.js`
+- [x] Có `src/middlewares/notFound.middleware.js`
+- [x] Có `src/middlewares/error.middleware.js`
+- [x] Có `src/middlewares/validate.middleware.js`
+- [x] `npm run dev` chạy được
+- [x] `GET /api/v1/health` chạy được
+- [x] `GET /api/v1/health/db` chạy được
+- [x] Route không tồn tại trả lỗi 404 thống nhất
+- [x] Error middleware trả lỗi JSON thống nhất
 - [x] Skeleton ban đầu hoàn tất; Auth và Topics đã được implement ở các bước sau
 
 ---
@@ -833,6 +833,7 @@ Return access_token + username
 | Papers | GET | `/api/v1/papers?page=1&limit=5&topic_id=1` | Lọc paper theo chủ đề bằng `papers.topic_id` | Implemented |
 | Papers | GET | `/api/v1/papers/search?q=keyword&page=1&limit=10` | Tìm kiếm paper theo title, abstract, authors | Implemented |
 | Papers | GET | `/api/v1/papers/:id` | Lấy chi tiết paper, bao gồm field `summary` từ DB | Implemented |
+| Papers | POST | `/api/v1/papers/:id/summarize` | Tóm tắt on-demand khi `papers.summary` đang `NULL` | Implemented |
 | Favorites | GET | `/api/v1/favorites` | Lấy danh sách paper yêu thích | Implemented |
 | Favorites | POST | `/api/v1/papers/favorite/:id` | Lưu paper yêu thích | Implemented |
 | Favorites | DELETE | `/api/v1/papers/favorite/:id` | Bỏ lưu paper yêu thích | Implemented |
@@ -1444,11 +1445,9 @@ Dữ liệu trả về mẫu:
 }
 ```
 
-### 9.7.7 Summary từ AI batch
+### 9.7.7 Summary từ AI batch và fallback on-demand
 
-Backend không dùng API realtime `POST /api/v1/papers/:id/summarize` trong core flow hiện tại.
-
-Luồng summary được chốt theo hướng batch:
+Luồng chính được chốt theo hướng batch:
 
 ```txt
 Crawler thêm paper mới vào DB
@@ -1458,7 +1457,46 @@ Crawler thêm paper mới vào DB
 -> Backend trả field summary qua GET /api/v1/papers và GET /api/v1/papers/:id
 ```
 
-Nếu `papers.summary` chưa có, API paper trả `summary: null`.
+Nếu `papers.summary` chưa có, API paper trả `summary: null`. Khi FE cần summary ngay ở trang chi tiết, FE gọi fallback API `POST /api/v1/papers/:id/summarize`.
+
+### 9.7.8 POST /api/v1/papers/:id/summarize
+
+Tóm tắt paper on-demand khi `papers.summary` đang `NULL`. Backend lấy abstract từ DB, gọi AI service `POST /summarize`, lưu summary vào `papers.summary`, rồi trả summary cho FE.
+
+Cách gửi:
+
+```http
+POST /api/v1/papers/1/summarize
+Authorization: Bearer <access_token>
+```
+
+Dữ liệu trả về mẫu khi gọi AI service:
+
+```json
+{
+  "success": true,
+  "message": "Summarize paper successfully",
+  "data": {
+    "paper_id": 1,
+    "summary": "Bài báo đề xuất một phương pháp dựa trên transformer cho hệ thống gợi ý paper.",
+    "source": "ai_service"
+  }
+}
+```
+
+Dữ liệu trả về mẫu khi DB đã có summary:
+
+```json
+{
+  "success": true,
+  "message": "Summarize paper successfully",
+  "data": {
+    "paper_id": 1,
+    "summary": "Bài báo đề xuất một phương pháp dựa trên transformer cho hệ thống gợi ý paper.",
+    "source": "database"
+  }
+}
+```
 
 ---
 

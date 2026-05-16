@@ -1,17 +1,24 @@
 import math
 import os
+import sys
+from pathlib import Path
 
+from dotenv import load_dotenv
 from groq import Groq
 from sqlalchemy.orm import Session
-
-from models import Paper
 
 
 _client = None
 
-SYSTEM_PROMPT = """Bạn là trợ lý nghiên cứu khoa học.
-Hãy tóm tắt abstract sau thành 3-4 câu ngắn gọn bằng tiếng Việt.
-Nêu rõ: vấn đề giải quyết, phương pháp chính, kết quả nổi bật."""
+ROOT_DIR = Path(__file__).resolve().parents[1]
+DATABASE_DIR = ROOT_DIR / "database"
+AI_DIR = ROOT_DIR / "ai"
+
+load_dotenv(AI_DIR / ".env")
+
+SYSTEM_PROMPT = """You are a scientific research assistant.
+Summarize the following abstract in 3-4 concise English sentences.
+Clearly mention: the problem, the main method, and the key results."""
 
 STOPWORDS = {
     "a", "an", "the", "of", "in", "on", "for", "and", "or",
@@ -19,6 +26,18 @@ STOPWORDS = {
     "by", "from", "via", "using", "based", "propose",
     "show", "also", "paper", "method", "model", "results",
 }
+
+
+def _get_paper_model():
+    """Import database model only when a DB-related AI function needs it."""
+    database_path = str(DATABASE_DIR)
+
+    if database_path not in sys.path:
+        sys.path.insert(0, database_path)
+
+    from models import Paper  # noqa: WPS433
+
+    return Paper
 
 
 def _get_groq_client():
@@ -52,6 +71,8 @@ def summarize_abstract(abstract: str) -> str:
 
 def summarize_pending_papers(db: Session, batch_size: int = 20):
     """Summarize papers that do not have papers.summary yet."""
+    Paper = _get_paper_model()
+
     papers = (
         db.query(Paper)
         .filter(Paper.summary == None)
@@ -117,6 +138,8 @@ def check_duplicate(
     limit: int = 5,
 ):
     """Return multiple duplicated or near-duplicated papers sorted by similarity."""
+    Paper = _get_paper_model()
+
     new_text = f"{new_paper_title or ''} {new_paper_abstract or ''}"
     new_freq = _build_word_freq(new_text)
     existing_papers = db.query(Paper).all()

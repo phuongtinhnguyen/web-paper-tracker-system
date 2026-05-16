@@ -1,82 +1,133 @@
-import sys
-import os
 import logging
+import os
+import sys
 import time
 
-# [MẸO KIẾN TRÚC]: Thêm thư mục 'database' vào đường dẫn hệ thống
-# Giúp file này (nằm trong thư mục con) có thể import được database.py ở thư mục cha
+
 current_dir = os.path.dirname(os.path.abspath(__file__))
 database_dir = os.path.dirname(current_dir)
 sys.path.append(database_dir)
 
-# Import các công cụ kết nối DB và bản thiết kế Bảng
-from database import SessionLocal
-from models import Paper, Topic
+from database import SessionLocal  # noqa: E402
+from models import Paper, Topic  # noqa: E402
+from crawler.arxiv_client import TARGET_TOPICS, fetch_papers_by_topic  # noqa: E402
 
-# Import arxiv_client
-from crawler.arxiv_client import fetch_papers_by_topic, TARGET_TOPICS
 
-# Thiết lập hệ thống ghi log
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-def run_crawler():
-    logger.info("Khởi động tiến trình cào dữ liệu (Crawler)...")
-    
-    # 1. Mở cửa Database (Lấy chìa khóa)
+
+def run_crawler(max_results_per_topic: int = 10, sleep_seconds: int = 10):
+    logger.info("Start arXiv crawler.")
+
     db = SessionLocal()
-    
+    result = {
+        "success": True,
+        "fetched_paper_count": 0,
+        "new_paper_count": 0,
+        "skipped_existing_count": 0,
+        "new_papers": [],
+        "topics": [],
+    }
+
     try:
-        # Lặp qua từng chủ đề trong danh sách 10 chủ đề của dự án
         for topic_name in TARGET_TOPICS:
-            logger.info(f"--- Đang xử lý chủ đề: {topic_name} ---")
-            
-            # 2. XỬ LÝ BẢNG TOPIC: Đảm bảo chủ đề này đã có trong Database
+            logger.info("--- Processing topic: %s ---", topic_name)
+
             topic = db.query(Topic).filter(Topic.name == topic_name).first()
+
             if not topic:
                 topic = Topic(name=topic_name)
                 db.add(topic)
-                db.commit() # Lưu ngay để lấy được topic.id cho các bài báo
+                db.commit()
                 db.refresh(topic)
-                logger.info(f"Đã tạo mới chủ đề trong DB: {topic_name}")
-            
-            # 3. KÉO DỮ LIỆU: Gọi arxiv_client đi lấy hàng (Lấy tạm 10 bài để test)
-            papers_data = fetch_papers_by_topic(topic_name, max_results=10)
-            
+                logger.info("Created topic: %s", topic_name)
+
+            papers_data = fetch_papers_by_topic(
+                topic_name,
+                max_results=max_results_per_topic,
+            )
+
+            fetched_count = len(papers_data)
             new_papers_count = 0
+            skipped_existing_count = 0
+            result["fetched_paper_count"] += fetched_count
+
+            logger.info(
+                "Fetched %s papers from arXiv for topic '%s'.",
+                fetched_count,
+                topic_name,
+            )
+
             for data in papers_data:
-                # 4. CHỐNG TRÙNG LẶP: Kiểm tra arxiv_id đã tồn tại chưa
-                existing_paper = db.query(Paper).filter(Paper.arxiv_id == data['arxiv_id']).first()
-                
-                if not existing_paper:
-                    # 5. ĐÓNG GÓI THÀNH ĐỐI TƯỢNG PAPER (Bản thiết kế SQLAlchemy)
-                    new_paper = Paper(
-                        arxiv_id=data['arxiv_id'],
-                        title=data['title'],
-                        abstract=data['abstract'],
-                        authors=data['authors'],
-                        published_date=data['published_at'],
-                        pdf_url=data['url'],
-                        topic_id=topic.id # Gắn khóa ngoại liên kết với chủ đề tương ứng
-                    )
-                    db.add(new_paper) # Bỏ vào giỏ hàng chuẩn bị lưu
-                    new_papers_count += 1
-            
-            # 6. CHỐT ĐƠN: Đẩy tất cả bài báo mới của chủ đề này xuống Neon Cloud
+                existing_paper = (
+                    db.query(Paper)
+                    .filter(Paper.arxiv_id == data["arxiv_id"])
+                    .first()
+                )
+
+                if existing_paper:
+                    skipped_existing_count += 1
+                    result["skipped_existing_count"] += 1
+                    continue
+
+                new_paper = Paper(
+                    arxiv_id=data["arxiv_id"],
+                    title=data["title"],
+                    abstract=data["abstract"],
+                    authors=data["authors"],
+                    published_date=data["published_at"],
+                    pdf_url=data["url"],
+                    topic_id=topic.id,
+                )
+
+                db.add(new_paper)
+                db.flush()
+
+                result["new_papers"].append({
+                    "id": new_paper.id,
+                    "arxiv_id": new_paper.arxiv_id,
+                    "title": new_paper.title,
+                    "topic_id": new_paper.topic_id,
+                })
+                result["new_paper_count"] += 1
+                new_papers_count += 1
+
             if new_papers_count > 0:
                 db.commit()
-                logger.info(f"Đã lưu thành công {new_papers_count} bài báo MỚI xuống Database.")
+                logger.info("Saved %s new papers.", new_papers_count)
             else:
-                logger.info("Không có bài báo nào mới (Tất cả đã tồn tại trong DB).")
-            logger.info("Tạm nghỉ 10 giây để tránh bị ArXiv chặn (Rate Limit)...")
-            time.sleep(10)
-                
-    except Exception as e:
-        logger.error(f"Đã xảy ra lỗi nghiêm trọng: {e}")
-        db.rollback() # Hoàn tác mọi thay đổi nếu có lỗi (Bảo vệ dữ liệu)
+                logger.info("No new papers for this topic.")
+
+            result["topics"].append({
+                "topic_name": topic_name,
+                "fetched": fetched_count,
+                "inserted": new_papers_count,
+                "skipped_existing": skipped_existing_count,
+            })
+            logger.info(
+                "Topic '%s': fetched=%s, inserted=%s, skipped_existing=%s.",
+                topic_name,
+                fetched_count,
+                new_papers_count,
+                skipped_existing_count,
+            )
+
+            if sleep_seconds > 0:
+                logger.info("Sleep %s seconds to avoid arXiv rate limit.", sleep_seconds)
+                time.sleep(sleep_seconds)
+
+    except Exception as error:
+        logger.error("Crawler failed: %s", error)
+        db.rollback()
+        result["success"] = False
+        result["error"] = str(error)
     finally:
-        db.close() # Luôn luôn đóng cửa kho khi làm xong việc
-        logger.info("Đã đóng kết nối Database. Crawler kết thúc an toàn.")
+        db.close()
+        logger.info("Crawler DB session closed.")
+
+    return result
+
 
 if __name__ == "__main__":
     run_crawler()

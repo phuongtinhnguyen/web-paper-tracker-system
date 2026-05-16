@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import PaperCard from "../components/PaperCard";
-import { Loader2, LayoutGrid, ChevronLeft, ChevronRight, Hash } from "lucide-react";
+import { Loader2, LayoutGrid, Hash } from "lucide-react";
+import Pagination from "../components/Pagination";
 import { getTopics, getPapersByTopic, addFavorite, removeFavorite } from "../services/API";
 
 function extractTopics(response) {
@@ -179,41 +180,12 @@ export default function TopicPage() {
               )}
             </div>
 
-            {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-2 mt-10">
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                  disabled={currentPage === 1}
-                  className="p-2 rounded-xl border border-gray-200 hover:bg-green-50 disabled:opacity-20 transition-all"
-                >
-                  <ChevronLeft size={20} />
-                </button>
-
-                <div className="flex gap-1.5">
-                  {[...Array(totalPages)].map((_, i) => (
-                    <button
-                      key={i + 1}
-                      onClick={() => setCurrentPage(i + 1)}
-                      className={`w-10 h-10 rounded-xl text-sm font-bold transition-all ${
-                        currentPage === i + 1
-                          ? "bg-green-600 text-white shadow-lg"
-                          : "bg-white border border-gray-100 text-gray-500 hover:border-green-500"
-                      }`}
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
-                </div>
-
-                <button
-                  onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                  className="p-2 rounded-xl border border-gray-200 hover:bg-green-50 disabled:opacity-20 transition-all"
-                >
-                  <ChevronRight size={20} />
-                </button>
-              </div>
-            )}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              variant="green"
+            />
           </div>
         )}
       </section>

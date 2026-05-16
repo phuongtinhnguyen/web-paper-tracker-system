@@ -1,7 +1,19 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Calendar, Users, ExternalLink, Heart, Loader2 } from "lucide-react";
-import { getPaperById, addFavorite, removeFavorite } from "../services/API";
+import {
+  ArrowLeft,
+  Calendar,
+  Users,
+  ExternalLink,
+  Heart,
+  Loader2,
+} from "lucide-react";
+import {
+  getPaperById,
+  summarizePaper,
+  addFavorite,
+  removeFavorite,
+} from "../services/API";
 
 export default function PaperDetailPage() {
   const { id } = useParams();
@@ -10,14 +22,37 @@ export default function PaperDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState(null);
 
   useEffect(() => {
     const fetchPaper = async () => {
       setLoading(true);
       try {
         const res = await getPaperById(id);
-        setPaper(res.data);
-        setIsFavorite(res.data.is_favorited || false);
+        const paperData = res.data.data || res.data;
+
+        setPaper(paperData);
+        setIsFavorite(paperData.is_favorited || false);
+
+        if (!paperData.summary) {
+          try {
+            setSummaryLoading(true);
+            setSummaryError(null);
+
+            const summaryRes = await summarizePaper(id);
+            const summaryData = summaryRes.data.data;
+
+            setPaper({
+              ...paperData,
+              summary: summaryData.summary,
+            });
+          } catch {
+            setSummaryError("Chưa thể tạo tóm tắt cho bài báo này.");
+          } finally {
+            setSummaryLoading(false);
+          }
+        }
       } catch {
         setError("Không thể tải thông tin bài báo.");
       } finally {
@@ -45,9 +80,10 @@ export default function PaperDetailPage() {
   let authors = [];
   if (paper) {
     try {
-      authors = typeof paper.authors === 'string' 
-        ? JSON.parse(paper.authors) 
-        : paper.authors || [];
+      authors =
+        typeof paper.authors === "string"
+          ? JSON.parse(paper.authors)
+          : paper.authors || [];
     } catch {
       authors = paper.authors ? [paper.authors] : [];
     }
@@ -64,7 +100,9 @@ export default function PaperDetailPage() {
   if (error || !paper) {
     return (
       <div className="text-center py-20">
-        <p className="text-red-400 font-medium mb-4">{error || "Không tìm thấy bài báo."}</p>
+        <p className="text-red-400 font-medium mb-4">
+          {error || "Không tìm thấy bài báo."}
+        </p>
         <button
           onClick={() => navigate(-1)}
           className="px-6 py-2 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition"
@@ -97,16 +135,13 @@ export default function PaperDetailPage() {
             <button
               onClick={handleToggleFavorite}
               className={`p-3 rounded-full transition-all flex-shrink-0 ${
-                isFavorite 
-                  ? "bg-red-50 text-red-500" 
+                isFavorite
+                  ? "bg-red-50 text-red-500"
                   : "bg-gray-100 text-gray-400 hover:bg-red-50 hover:text-red-400"
               }`}
               title={isFavorite ? "Bỏ lưu" : "Lưu vào yêu thích"}
             >
-              <Heart 
-                size={22} 
-                fill={isFavorite ? "#ef4444" : "none"} 
-              />
+              <Heart size={22} fill={isFavorite ? "#ef4444" : "none"} />
             </button>
           </div>
 
@@ -138,6 +173,18 @@ export default function PaperDetailPage() {
                   {paper.summary}
                 </p>
               </div>
+            </div>
+          )}
+
+          {!paper.summary && summaryLoading && (
+            <div className="mb-8 bg-green-50/50 border border-green-100 rounded-xl p-5 text-green-700 font-medium">
+              Đang tạo tóm tắt...
+            </div>
+          )}
+
+          {!paper.summary && summaryError && (
+            <div className="mb-8 bg-red-50 border border-red-100 rounded-xl p-5 text-red-500 font-medium">
+              {summaryError}
             </div>
           )}
 

@@ -32,5 +32,11 @@ router.delete(
 );
 router.get("/:id", validate(getPaperByIdSchema), paperController.getPaperById);
 
+router.post(
+  "/:id/summarize",
+  authMiddleware,
+  validate(getPaperByIdSchema),
+  paperController.summarizePaper
+);
 
 module.exports = router;

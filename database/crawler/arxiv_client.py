@@ -48,7 +48,7 @@ def fetch_papers_by_topic(topic_name: str, max_results: int = 50) -> list:
     )
     
     # Khởi tạo Client (Chuẩn cú pháp của thư viện arxiv version >= 2.0.0)
-    client = arxiv.Client()
+    client = arxiv.Client(page_size=max_results)
     papers_data = []
     
     try:

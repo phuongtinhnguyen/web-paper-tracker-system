@@ -1,0 +1,14 @@
+# dotenv environment variable files
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# VS code
+.vscode/
+../.vscode/

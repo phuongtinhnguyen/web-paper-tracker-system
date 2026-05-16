@@ -1,0 +1,89 @@
+# GET http://localhost:8000/api/v1/health
+
+# GET http://localhost:8000/api/v1/health/db
+
+# GET http://localhost:8000/api/v1/not-exist
+
+### Register
+POST http://localhost:8000/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "username": "Test User2",
+  "email": "test2@gmail.com",
+  "password": "123456"
+}
+
+### Login
+POST http://localhost:8000/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@gmail.com",
+  "password": "123456"
+}
+
+### Me
+GET http://localhost:8000/api/v1/auth/me
+Authorization: Bearer <token>
+
+
+
+
+### Get all topics
+GET http://localhost:8000/api/v1/topics
+Authorization: Bearer <access_token>
+
+### Get followed topics
+GET http://localhost:8000/api/v1/user-topics
+Authorization: Bearer <access_token>
+
+### Follow topic
+POST http://localhost:8000/api/v1/user-topics
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "topic_id": 1
+}
+
+### Update followed topic
+PUT http://localhost:8000/api/v1/user-topics/1
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "topic_id": 11
+}
+
+### Unfollow topic
+DELETE http://localhost:8000/api/v1/user-topics/1
+Authorization: Bearer <access_token>
+
+### Get all papers
+GET http://localhost:8000/api/v1/papers?page=1&limit=5&filter=all
+
+### Get recent papers
+GET http://localhost:8000/api/v1/papers?page=1&limit=5&filter=recent
+
+### Get papers in last 2 days
+GET http://localhost:8000/api/v1/papers?page=1&limit=5&filter=2days
+
+
+### Lấy chi tiết paper 1
+GET http://localhost:8000/api/v1/papers/1
+
+### Search
+GET http://localhost:8000/api/v1/papers/search?q=machine&page=1&limit=10
+
+### Them muc yeu thich
+POST http://localhost:8000/api/v1/papers/favorite/1
+Authorization: Bearer <access_token>
+
+### xoa muc yeu thich
+DELETE http://localhost:8000/api/v1/papers/favorite/1
+Authorization: Bearer <access_token>
+
+### Lay muc yeu thich
+GET http://localhost:8000/api/v1/favorites?page=1&limit=5
+Authorization: Bearer <access_token>

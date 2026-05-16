@@ -30,9 +30,9 @@ export const register = (username, email, password) =>
 export const getProfile = () =>
   api.get("/auth/me");
 
-/** PUT /auth/profile  → { username, email } */
-export const updateProfile = (username, email) =>
-  api.put("/auth/profile", { username, email });
+/** PUT /auth/profile  → { username } */
+export const updateProfile = (username) =>
+  api.put("/auth/profile", { username });
 
 /** PUT /auth/change-password  → { message } */
 export const changePassword = (currentPassword, newPassword) =>
@@ -117,8 +117,8 @@ export const trackTopic = (topicId) =>
 /** DELETE /user-topics/:topicId  → { topic_id } */
 export const untrackTopic = (topicId) =>
   api.delete(`/user-topics/${topicId}`);
-/**Get related papers */
-export const getRelatedPapers = (paperId) =>
-  api.get(`/papers/${paperId}/related`);
+/** GET /papers/:id/related?limit=5  -> { paper_id, related_papers } */
+export const getRelatedPapers = (paperId, params = { limit: 5 }) =>
+  api.get(`/papers/${paperId}/related`, { params });
 
 export default api;

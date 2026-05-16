@@ -159,8 +159,8 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 ### Chưa cần làm ở sprint 1
 ### Nâng cao - Gợi ý paper liên quan
 
-- [ ] UI hiển thị danh sách paper liên quan
-- [ ] Gọi API lấy paper liên quan theo paper đang xem
+- [x] UI hiển thị danh sách paper liên quan
+- [x] FE chuẩn bị gọi API lấy paper liên quan theo paper đang xem: `GET /api/v1/papers/:id/related?limit=5`
 
 ### Nâng cao - Phát hiện paper trùng hoặc gần giống
 
@@ -199,6 +199,8 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 - [x] API đăng ký: `POST /api/v1/auth/register`
 - [x] API đăng nhập: `POST /api/v1/auth/login`
 - [x] API lấy thông tin user từ token: `GET /api/v1/auth/me`
+- [x] API cập nhật username/profile user đang login: `PUT /api/v1/auth/profile`
+- [x] API đổi mật khẩu user đang login: `PUT /api/v1/auth/change-password`
 - [x] API đăng ký trả `created_at`
 - [x] Hash password bằng `bcrypt`
 - [x] JWT access token
@@ -900,6 +902,8 @@ Frontend và Backend thống nhất một base URL khi tích hợp.
 | Auth | POST | `/api/v1/auth/register` | Đăng ký tài khoản | Implemented |
 | Auth | POST | `/api/v1/auth/login` | Đăng nhập và lấy access token | Implemented |
 | Auth | GET | `/api/v1/auth/me` | Lấy thông tin user từ token | Implemented |
+| Auth | PUT | `/api/v1/auth/profile` | Cập nhật username/profile user đang login | Implemented |
+| Auth | PUT | `/api/v1/auth/change-password` | Đổi mật khẩu user đang login | Implemented |
 | Topics | GET | `/api/v1/topics` | Lấy tất cả chủ đề có trong database từ bảng `topics` | Implemented |
 | User Topics | GET | `/api/v1/user-topics` | Lấy chủ đề user đang theo dõi từ bảng `user_topics` | Implemented |
 | User Topics | POST | `/api/v1/user-topics` | Theo dõi chủ đề có sẵn bằng `topic_id` | Implemented |
@@ -916,7 +920,7 @@ Frontend và Backend thống nhất một base URL khi tích hợp.
 | Favorites | POST | `/api/v1/papers/favorite/:id` | Lưu paper yêu thích | Implemented |
 | Favorites | DELETE | `/api/v1/papers/favorite/:id` | Bỏ lưu paper yêu thích | Implemented |
 | Crawler | POST | `/api/v1/crawler/run` | Trigger crawler thủ công cho dev/admin | Planned Core/Internal |
-| Related | GET | `/api/v1/papers/:id/related?limit=5` | Lấy paper liên quan từ bảng planned `related_papers` | Advanced |
+| Related | GET | `/api/v1/papers/:id/related?limit=5` | Lấy paper liên quan cho trang chi tiết, cần bảng planned `related_papers` hoặc logic fallback theo topic | Planned Core/Upcoming |
 | Duplicate | GET | `/api/v1/papers/:id/matches?limit=5` | Lấy paper trùng/gần giống từ bảng planned `matching_papers` | Advanced |
 | Notifications | GET | `/api/v1/notifications` | Lấy thông báo - thực hiện sau khi có bảng `notifications` | Future/Later |
 | Notifications | PATCH | `/api/v1/notifications/:id/read` | Đánh dấu thông báo đã đọc - thực hiện sau khi có bảng `notifications` | Future/Later |

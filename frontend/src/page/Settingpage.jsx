@@ -1,23 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getProfile, updateProfile, changePassword } from '../services/API';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { getProfile, updateProfile, changePassword } from "../services/API";
 
 function Settingpage({ isOpen, onClose }) {
   const navigate = useNavigate();
-  
+
   // Hỗ trợ cả 2 mode: dùng như Modal (có isOpen/onClose) hoặc Page (route)
   const isModalMode = isOpen !== undefined;
   const isVisible = !isModalMode || isOpen;
 
-  const [activeTab, setActiveTab] = useState('profile');
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
+  const [activeTab, setActiveTab] = useState("profile");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  
+
   const [passwordForm, setPasswordForm] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
   });
 
   // Xử lý đóng: modal mode → gọi onClose, page mode → navigate về dashboard
@@ -25,7 +25,7 @@ function Settingpage({ isOpen, onClose }) {
     if (onClose) {
       onClose();
     } else {
-      navigate('/dashboard');
+      navigate("/dashboard");
     }
   };
 
@@ -38,9 +38,9 @@ function Settingpage({ isOpen, onClose }) {
           const response = await getProfile();
           // Backend trả về { success, message, data: { user: { id, email, username } } }
           const userData = response.data?.data?.user || response.data;
-          
-          setUsername(userData.username || '');
-          setEmail(userData.email || '');
+
+          setUsername(userData.username || "");
+          setEmail(userData.email || "");
         } catch (error) {
           console.error("Lỗi khi lấy thông tin tài khoản:", error);
           alert("Không thể tải thông tin tài khoản!");
@@ -52,7 +52,7 @@ function Settingpage({ isOpen, onClose }) {
       fetchUserData();
     }
   }, [isVisible]);
-  
+
   if (!isVisible) return null;
 
   // Xử lý cập nhật Username
@@ -60,12 +60,24 @@ function Settingpage({ isOpen, onClose }) {
     e.preventDefault();
     try {
       setLoading(true);
-      await updateProfile(username, email);
-      alert('Cập nhật thông tin tài khoản thành công!');
+      const response = await updateProfile(username);
+      const updatedUser = response.data?.data?.user;
+
+      if (updatedUser?.username) {
+        localStorage.setItem("username", updatedUser.username);
+        window.dispatchEvent(
+          new CustomEvent("username-updated", {
+            detail: { username: updatedUser.username },
+          }),
+        );
+      }
+      alert("Cập nhật thông tin tài khoản thành công!");
       if (onClose) onClose();
     } catch (error) {
       console.error("Lỗi khi cập nhật profile:", error);
-      alert(error.response?.data?.message || 'Cập nhật thất bại, vui lòng thử lại!');
+      alert(
+        error.response?.data?.message || "Cập nhật thất bại, vui lòng thử lại!",
+      );
     } finally {
       setLoading(false);
     }
@@ -75,18 +87,28 @@ function Settingpage({ isOpen, onClose }) {
   const handleUpdatePassword = async (e) => {
     e.preventDefault();
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      alert('Mật khẩu mới và xác nhận mật khẩu không khớp!');
+      alert("Mật khẩu mới và xác nhận mật khẩu không khớp!");
       return;
     }
     try {
       setLoading(true);
-      await changePassword(passwordForm.currentPassword, passwordForm.newPassword);
-      alert('Đổi mật khẩu thành công!');
-      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      await changePassword(
+        passwordForm.currentPassword,
+        passwordForm.newPassword,
+      );
+      alert("Đổi mật khẩu thành công!");
+      setPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
       handleClose();
     } catch (error) {
       console.error("Lỗi khi đổi mật khẩu:", error);
-      alert(error.response?.data?.message || 'Đổi mật khẩu thất bại, vui lòng thử lại!');
+      alert(
+        error.response?.data?.message ||
+          "Đổi mật khẩu thất bại, vui lòng thử lại!",
+      );
     } finally {
       setLoading(false);
     }
@@ -97,8 +119,8 @@ function Settingpage({ isOpen, onClose }) {
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-green-100">
         <h3 className="text-lg font-bold text-green-800">Cài đặt tài khoản</h3>
-        <button 
-          onClick={handleClose} 
+        <button
+          onClick={handleClose}
           className="text-red-400 hover:text-red-600 text-2xl font-semibold"
         >
           &times;
@@ -109,17 +131,21 @@ function Settingpage({ isOpen, onClose }) {
       <div className="flex border-b border-gray-200">
         <button
           className={`flex-1 py-3 text-center text-sm font-medium ${
-            activeTab === 'profile' ? 'border-b-2 border-blue-600 text-green-600' : 'text-gray-500 hover:text-gray-700'
+            activeTab === "profile"
+              ? "border-b-2 border-blue-600 text-green-600"
+              : "text-gray-500 hover:text-gray-700"
           }`}
-          onClick={() => setActiveTab('profile')}
+          onClick={() => setActiveTab("profile")}
         >
           Thông tin tài khoản
         </button>
         <button
           className={`flex-1 py-3 text-center text-sm font-medium ${
-            activeTab === 'password' ? 'border-b-2 border-blue-600 text-green-600' : 'text-gray-500 hover:text-gray-700'
+            activeTab === "password"
+              ? "border-b-2 border-blue-600 text-green-600"
+              : "text-gray-500 hover:text-gray-700"
           }`}
-          onClick={() => setActiveTab('password')}
+          onClick={() => setActiveTab("password")}
         >
           Đổi mật khẩu
         </button>
@@ -129,14 +155,18 @@ function Settingpage({ isOpen, onClose }) {
       <div className="p-6 relative">
         {loading && (
           <div className="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center z-10">
-            <span className="text-sm font-medium text-gray-600 animate-pulse">Đang xử lý...</span>
+            <span className="text-sm font-medium text-gray-600 animate-pulse">
+              Đang xử lý...
+            </span>
           </div>
         )}
 
-        {activeTab === 'profile' ? (
+        {activeTab === "profile" ? (
           <form onSubmit={handleUpdateUsername} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-green-700 mb-1">Email (Không thể sửa)</label>
+              <label className="block text-sm font-medium text-green-700 mb-1">
+                Email (Không thể sửa)
+              </label>
               <input
                 type="email"
                 value={email}
@@ -145,7 +175,9 @@ function Settingpage({ isOpen, onClose }) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-green-700 mb-1">Username</label>
+              <label className="block text-sm font-medium text-green-700 mb-1">
+                Username
+              </label>
               <input
                 type="text"
                 value={username}
@@ -173,31 +205,52 @@ function Settingpage({ isOpen, onClose }) {
         ) : (
           <form onSubmit={handleUpdatePassword} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-green-700 mb-1">Mật khẩu hiện tại</label>
+              <label className="block text-sm font-medium text-green-700 mb-1">
+                Mật khẩu hiện tại
+              </label>
               <input
                 type="password"
                 value={passwordForm.currentPassword}
-                onChange={(e) => setPasswordForm({...passwordForm, currentPassword: e.target.value})}
+                onChange={(e) =>
+                  setPasswordForm({
+                    ...passwordForm,
+                    currentPassword: e.target.value,
+                  })
+                }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-green-700 mb-1">Mật khẩu mới</label>
+              <label className="block text-sm font-medium text-green-700 mb-1">
+                Mật khẩu mới
+              </label>
               <input
                 type="password"
                 value={passwordForm.newPassword}
-                onChange={(e) => setPasswordForm({...passwordForm, newPassword: e.target.value})}
+                onChange={(e) =>
+                  setPasswordForm({
+                    ...passwordForm,
+                    newPassword: e.target.value,
+                  })
+                }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-green-700 mb-1">Xác nhận mật khẩu mới</label>
+              <label className="block text-sm font-medium text-green-700 mb-1">
+                Xác nhận mật khẩu mới
+              </label>
               <input
                 type="password"
                 value={passwordForm.confirmPassword}
-                onChange={(e) => setPasswordForm({...passwordForm, confirmPassword: e.target.value})}
+                onChange={(e) =>
+                  setPasswordForm({
+                    ...passwordForm,
+                    confirmPassword: e.target.value,
+                  })
+                }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                 required
               />
@@ -233,11 +286,7 @@ function Settingpage({ isOpen, onClose }) {
   }
 
   // PAGE MODE: render inline trong <main> của MainLayout (không có backdrop)
-  return (
-    <div className="flex justify-center py-6">
-      {cardContent}
-    </div>
-  );
+  return <div className="flex justify-center py-6">{cardContent}</div>;
 }
 
 export default Settingpage;

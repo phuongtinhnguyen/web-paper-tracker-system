@@ -86,24 +86,16 @@ async function getMe(userId) {
   };
 }
 
-async function updateProfile(userId, { username, email }) {
+async function updateProfile(userId, { username }) {
   const user = await authRepository.findUserById(userId);
 
   if (!user) {
     throw new AppError("User not found", 404);
   }
 
-  // Check if the new email is already taken by another user
-  if (email && email !== user.email) {
-    const existingUser = await authRepository.findUserByEmail(email);
-    if (existingUser && existingUser.id !== userId) {
-      throw new AppError("Email already exists", 409);
-    }
-  }
-
   const updatedUser = await authRepository.updateUser(userId, {
-    username: username || user.full_name,
-    email: email || user.email,
+    username,
+    email: user.email,
   });
 
   return {

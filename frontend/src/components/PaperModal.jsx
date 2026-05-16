@@ -6,11 +6,11 @@ export default function PaperModal({ isOpen, onClose, paper, authors }) {
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
       {/* Lớp nền mờ */}
-      <div 
+      <div
         className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-300"
         onClick={onClose}
       ></div>
-      
+
       {/* Khung nội dung */}
       <div className="relative bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in duration-300">
         {/* Header */}
@@ -20,16 +20,17 @@ export default function PaperModal({ isOpen, onClose, paper, authors }) {
               {paper.title}
             </h2>
             <div className="flex flex-wrap gap-4 text-sm text-gray-500 font-medium">
-               <div className="flex items-center gap-1.5 text-green-700">
-                  <Users size={16} /> {Array.isArray(authors) ? authors.join(", ") : authors}
-               </div>
-               <div className="flex items-center gap-2">
-                  <Calendar size={16} className="text-green-600" />
-                  <span>{paper.published_at || "N/A"}</span>
-                </div>
+              <div className="flex items-center gap-1.5 text-green-700">
+                <Users size={16} />{" "}
+                {Array.isArray(authors) ? authors.join(", ") : authors}
+              </div>
+              <div className="flex items-center gap-2">
+                <Calendar size={16} className="text-green-600" />
+                <span>{paper.published_at || paper.published_date || "N/A"}</span>
+              </div>
             </div>
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="p-2 hover:bg-gray-200 rounded-full text-gray-400 transition-colors"
           >
@@ -39,9 +40,13 @@ export default function PaperModal({ isOpen, onClose, paper, authors }) {
 
         {/* Nội dung tóm tắt */}
         <div className="p-8 max-h-[60vh] overflow-y-auto">
-          <h4 className="text-xs font-bold text-green-600 uppercase tracking-[0.2em] mb-4">Tóm tắt nội dung</h4>
+          <h4 className="text-xs font-bold text-green-600 uppercase tracking-[0.2em] mb-4">
+            Tóm tắt nội dung
+          </h4>
           <p className="text-gray-600 leading-relaxed text-base text-justify whitespace-pre-line">
-            {paper.summary || paper.abstract || "Bài báo này hiện chưa có nội dung tóm tắt chi tiết."}
+            {paper.summary ||
+              paper.abstract ||
+              "Bài báo này hiện chưa có nội dung tóm tắt chi tiết."}
           </p>
         </div>
 
@@ -56,7 +61,7 @@ export default function PaperModal({ isOpen, onClose, paper, authors }) {
             <ExternalLink size={18} />
             Đọc toàn văn bài báo trên arXiv
           </a>
-          <button 
+          <button
             onClick={onClose}
             className="px-6 py-3 border border-gray-200 text-gray-600 rounded-xl font-bold hover:bg-gray-50 transition-colors"
           >

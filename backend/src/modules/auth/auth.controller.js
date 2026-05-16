@@ -21,13 +21,19 @@ const getMe = asyncHandler(async (req, res) => {
 });
 
 const updateProfile = asyncHandler(async (req, res) => {
-  const result = await authService.updateProfile(req.user.userId, req.body);
+  const result = await authService.updateProfile(
+    req.user.userId,
+    req.validated.body
+  );
 
   return success(res, result, "Profile updated successfully");
 });
 
 const changePassword = asyncHandler(async (req, res) => {
-  const result = await authService.changePassword(req.user.userId, req.body);
+  const result = await authService.changePassword(
+    req.user.userId,
+    req.validated.body
+  );
 
   return success(res, result, "Password changed successfully");
 });

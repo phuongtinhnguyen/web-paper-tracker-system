@@ -1,14 +1,31 @@
-import { Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import SearchBar from "./SearchBar";
 
 // Lấy username từ localStorage
 const getUsername = () => {
-  return localStorage.getItem("username") ;
+  return localStorage.getItem("username") || "User";
 };
 
 export default function MainLayout({ onSearch, onClearSearch }) {
-  const username = getUsername();
+  const location = useLocation();
+  const [username, setUsername] = useState(getUsername);
+  const shouldShowSearchBar = location.pathname !== "/settings";
+
+  useEffect(() => {
+    const syncUsername = () => {
+      setUsername(getUsername());
+    };
+
+    window.addEventListener("username-updated", syncUsername);
+    window.addEventListener("storage", syncUsername);
+
+    return () => {
+      window.removeEventListener("username-updated", syncUsername);
+      window.removeEventListener("storage", syncUsername);
+    };
+  }, []);
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -26,9 +43,11 @@ export default function MainLayout({ onSearch, onClearSearch }) {
                   {username}
                 </p>
               </div>
-              <div className="flex-1 max-w-2xl">
-                <SearchBar onSearch={onSearch} onClear={onClearSearch} />
-              </div>
+              {shouldShowSearchBar && (
+                <div className="flex-1 max-w-2xl">
+                  <SearchBar onSearch={onSearch} onClear={onClearSearch} />
+                </div>
+              )}
             </div>
           </div>
         </header>

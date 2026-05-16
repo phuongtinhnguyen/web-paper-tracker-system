@@ -440,6 +440,8 @@ Error:
 | Auth | POST | `/api/v1/auth/register` | Đăng ký tài khoản | Implemented |
 | Auth | POST | `/api/v1/auth/login` | Đăng nhập và lấy access token | Implemented |
 | Auth | GET | `/api/v1/auth/me` | Lấy thông tin user từ token | Implemented |
+| Auth | PUT | `/api/v1/auth/profile` | Cập nhật username/profile user đang login | Implemented |
+| Auth | PUT | `/api/v1/auth/change-password` | Đổi mật khẩu user đang login | Implemented |
 | Topics | GET | `/api/v1/topics` | Lấy tất cả topic trong DB | Implemented |
 | User Topics | GET | `/api/v1/user-topics` | Lấy topic user đang theo dõi | Implemented |
 | User Topics | POST | `/api/v1/user-topics` | Theo dõi topic bằng `topic_id` | Implemented |
@@ -456,7 +458,7 @@ Error:
 | Favorites | POST | `/api/v1/papers/favorite/:id` | Lưu paper yêu thích | Implemented |
 | Favorites | DELETE | `/api/v1/papers/favorite/:id` | Bỏ lưu paper yêu thích | Implemented |
 | Crawler | POST | `/api/v1/crawler/run` | Trigger crawler thủ công | Planned Core/Internal |
-| Related | GET | `/api/v1/papers/:id/related?limit=5` | Lấy paper liên quan | Advanced |
+| Related | GET | `/api/v1/papers/:id/related?limit=5` | Lấy paper liên quan cho trang chi tiết | Planned Core/Upcoming |
 | Duplicate | GET | `/api/v1/papers/:id/matches?limit=5` | Lấy paper trùng/gần giống | Advanced |
 | Notifications | GET | `/api/v1/notifications` | Lấy thông báo | Future/Later |
 | Notifications | PATCH | `/api/v1/notifications/:id/read` | Đánh dấu thông báo đã đọc | Future/Later |
@@ -588,6 +590,75 @@ Response mẫu:
   }
 }
 ```
+
+#### 6.5.4. PUT /api/v1/auth/profile
+
+Cập nhật username/profile của user đang login. API này chỉ cập nhật `username`, backend sẽ lưu vào field `users.full_name`.
+
+```http
+PUT /api/v1/auth/profile
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "username": "New User Name"
+}
+```
+
+Response mẫu:
+
+```json
+{
+  "success": true,
+  "message": "Profile updated successfully",
+  "data": {
+    "user": {
+      "id": 1,
+      "email": "test@gmail.com",
+      "username": "New User Name",
+      "created_at": "2026-05-15T00:00:00.000Z"
+    }
+  }
+}
+```
+
+Validation:
+
+- `username` là bắt buộc.
+- `username` không được là chuỗi rỗng.
+
+#### 6.5.5. PUT /api/v1/auth/change-password
+
+Đổi mật khẩu của user đang login. API này yêu cầu gửi đúng mật khẩu hiện tại trước khi đổi sang mật khẩu mới.
+
+```http
+PUT /api/v1/auth/change-password
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "currentPassword": "123456",
+  "newPassword": "654321"
+}
+```
+
+Response mẫu:
+
+```json
+{
+  "success": true,
+  "message": "Password changed successfully",
+  "data": {
+    "message": "Password changed successfully"
+  }
+}
+```
+
+Validation:
+
+- `currentPassword` là bắt buộc.
+- `newPassword` tối thiểu 6 ký tự.
+- Nếu `currentPassword` không đúng, backend trả lỗi `Current password is incorrect`.
 
 Auth notes:
 
@@ -974,7 +1045,7 @@ Các API dưới đây là planned contract cho FE/dev tham khảo. Nhóm này c
 | Method | Endpoint | Ghi chú |
 | --- | --- | --- |
 | POST | `/api/v1/crawler/run` | Planned internal/admin |
-| GET | `/api/v1/papers/:id/related?limit=5` | Advanced, cần `related_papers` |
+| GET | `/api/v1/papers/:id/related?limit=5` | Planned soon, cần `related_papers` |
 | GET | `/api/v1/papers/:id/matches?limit=5` | Advanced, cần `matching_papers` |
 | GET | `/api/v1/notifications` | Future, DB chưa có `notifications` |
 | PATCH | `/api/v1/notifications/:id/read` | Future, DB chưa có `notifications` |
@@ -1022,7 +1093,15 @@ Response mẫu:
 
 #### 6.9.2. GET /api/v1/papers/:id/related?limit=5
 
-Lấy danh sách paper liên quan của một paper. Backend dự kiến đọc bảng `related_papers`, sau đó join sang `papers` để trả thông tin paper.
+Lấy danh sách paper liên quan của một paper. API này sẽ được dùng ở trang chi tiết paper của Frontend.
+
+Backend dự kiến đọc bảng `related_papers`, sau đó join sang `papers` để trả thông tin paper. Nếu chưa có bảng `related_papers`, có thể tạm tính related papers bằng `topic_id` hoặc keyword/title similarity trước khi chuẩn hóa DB.
+
+Query params:
+
+```txt
+limit  optional, default 5, max tùy backend quy định
+```
 
 Cách gọi:
 
@@ -1053,6 +1132,15 @@ Response mẫu:
     ]
   }
 }
+```
+
+FE hiện mong đợi danh sách ở một trong các dạng sau, ưu tiên dạng đầu:
+
+```txt
+response.data.data.related_papers
+response.data.related_papers
+response.data.data
+response.data
 ```
 
 #### 6.9.3. GET /api/v1/papers/:id/matches?limit=5

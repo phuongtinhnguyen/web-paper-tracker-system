@@ -23,9 +23,10 @@ export default function PaperModal({ isOpen, onClose, paper, authors }) {
                <div className="flex items-center gap-1.5 text-green-700">
                   <Users size={16} /> {Array.isArray(authors) ? authors.join(", ") : authors}
                </div>
-               <div className="flex items-center gap-1.5">
-                  <Calendar size={16} /> {paper.published_at || "N/A"}
-               </div>
+               <div className="flex items-center gap-2">
+                  <Calendar size={16} className="text-green-600" />
+                  <span>{paper.published_at || "N/A"}</span>
+                </div>
             </div>
           </div>
           <button 
@@ -46,14 +47,14 @@ export default function PaperModal({ isOpen, onClose, paper, authors }) {
 
         {/* Footer */}
         <div className="p-6 border-t border-gray-100 flex gap-3 bg-gray-50/30">
-          <a 
-            href={paper.link} 
-            target="_blank" 
+          <a
+            href={paper.pdf_url || paper.link}
+            target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 transition-all shadow-lg shadow-green-100"
+            className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 transition-all shadow-lg"
           >
             <ExternalLink size={18} />
-            Đọc toàn văn bài báo
+            Đọc toàn văn bài báo trên arXiv
           </a>
           <button 
             onClick={onClose}

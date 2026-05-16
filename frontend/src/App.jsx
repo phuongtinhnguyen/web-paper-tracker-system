@@ -9,6 +9,7 @@ import HistoryPage from './page/HistoryPage';
 import TopicPage from './page/TopicsPage';
 import TrackingTopics from './page/TrackingTopicPage';
 import PaperDetailPage from './page/PaperDetailPage';
+import SettingsPage from './page/Settingpage';
 import ProtectedRoute from './components/ProtectedRoute';
 // Component bảo vệ route - chỉ cho phép user đã đăng nhập truy cập
 
@@ -57,6 +58,12 @@ function App() {
           <Route path="/paper/:id" element={
             <ProtectedRoute>
               <PaperDetailPage />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <SettingsPage />
             </ProtectedRoute>
           } />
         </Route>

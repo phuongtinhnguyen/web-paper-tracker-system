@@ -86,8 +86,61 @@ async function getMe(userId) {
   };
 }
 
+async function updateProfile(userId, { username, email }) {
+  const user = await authRepository.findUserById(userId);
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  // Check if the new email is already taken by another user
+  if (email && email !== user.email) {
+    const existingUser = await authRepository.findUserByEmail(email);
+    if (existingUser && existingUser.id !== userId) {
+      throw new AppError("Email already exists", 409);
+    }
+  }
+
+  const updatedUser = await authRepository.updateUser(userId, {
+    username: username || user.full_name,
+    email: email || user.email,
+  });
+
+  return {
+    user: {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      username: updatedUser.full_name,
+      created_at: updatedUser.created_at,
+    },
+  };
+}
+
+async function changePassword(userId, { currentPassword, newPassword }) {
+  const user = await authRepository.findUserById(userId);
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  // Need hashed_password from DB — fetch with it
+  const userWithPassword = await authRepository.findUserByEmail(user.email);
+
+  const isPasswordValid = await bcrypt.compare(currentPassword, userWithPassword.hashed_password);
+  if (!isPasswordValid) {
+    throw new AppError("Current password is incorrect", 401);
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  await authRepository.updatePassword(userId, hashedPassword);
+
+  return { message: "Password changed successfully" };
+}
+
 module.exports = {
   register,
   login,
   getMe,
+  updateProfile,
+  changePassword,
 };

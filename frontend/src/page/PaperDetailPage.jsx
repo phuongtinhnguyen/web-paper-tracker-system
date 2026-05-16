@@ -13,6 +13,7 @@ import {
   summarizePaper,
   addFavorite,
   removeFavorite,
+  getRelatedPapers
 } from "../services/API";
 
 export default function PaperDetailPage() {
@@ -24,6 +25,7 @@ export default function PaperDetailPage() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState(null);
+  const [relatedPapers, setRelatedPapers] = useState([]);
 
   useEffect(() => {
     const fetchPaper = async () => {
@@ -74,8 +76,25 @@ export default function PaperDetailPage() {
       // Revert state if API fails
       setIsFavorite(isFavorite);
     }
+    //lấy danh sách bài báo liên quan
+    
   };
-
+  //lấy danh sách bài báo liên quan
+  useEffect(() => {
+    const fetchRelatedPapers = async () => {
+      if (paper) {
+        try {
+          const res = await getRelatedPapers(paper.id);
+          const data = res.data.data || res.data;
+          setRelatedPapers(data);
+        } catch {
+          // Không cần xử lý lỗi nghiêm trọng nếu không lấy được bài báo liên quan
+        }
+      }
+    };
+    fetchRelatedPapers();
+  }, [paper?.id]);
+ 
   // Parse authors
   let authors = [];
   if (paper) {
@@ -217,7 +236,27 @@ export default function PaperDetailPage() {
             </div>
           )}
         </div>
-
+          {/*bài báo liên quan*/}
+          <div className="p-8 border-t border-gray-100 bg-gray-50/30">
+            <h3 className="text-sm font-bold text-gray-600 uppercase tracking-widest mb-3">
+              Bài báo liên quan
+            </h3>
+            <div className="flex flex-col gap-4">
+              {relatedPapers && relatedPapers.length > 0 ? (
+                relatedPapers.map((related) => (
+                  <div key={related.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <h4 className="font-bold text-green-600 mb-2">{related.title}</h4>
+                    <p className="text-sm text-gray-500 mb-2">
+                      {Array.isArray(related.authors) ? related.authors.join(", ") : related.authors}
+                    </p>
+                    <p className="text-gray-700 text-sm">{related.abstract}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500">Không có bài báo liên quan.</p>
+              )}
+            </div>
+          </div>
         {/* Footer */}
         <div className="p-6 border-t border-gray-100 bg-gray-50/30 flex gap-4">
           <a

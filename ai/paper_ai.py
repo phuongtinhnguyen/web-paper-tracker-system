@@ -7,7 +7,8 @@ from dotenv import load_dotenv
 from groq import Groq
 from sqlalchemy.orm import Session
 
-
+load_dotenv()
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 _client = None
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -176,3 +177,66 @@ def check_duplicate(
         "highest_similarity": round(highest_similarity * 100, 2),
         "matches": matches,
     }
+
+def analyze_topic_trends(topic_titles: list) -> dict:
+    """
+    Phân tích xu hướng theo chủ đề bằng Groq AI.
+
+    Input:
+        topic_titles: list các tên chủ đề
+        Ví dụ: ["AI Agents", "Stock Prediction", "Machine Learning", "NLP"]
+
+    Output:
+        {
+            "ranked_topics": ["AI Agents", "NLP", ...],  ← đã sắp xếp theo xu hướng
+            "analysis": "AI Agents đang rất hot vì...",  ← giải thích
+            "trending_keywords": ["LLM", "GPT", ...]     ← từ khóa hot
+        }
+    """
+    if not topic_titles:
+        return {"ranked_topics": [], "analysis": "Không có chủ đề nào"}
+
+    topics_str = "\n".join(f"- {t}" for t in topic_titles)
+
+    prompt = f"""You are a research trend analyst.
+Given the following research topics, rank them by current trending level (most trending first).
+Base your analysis on current AI/ML research trends as of 2024-2025.
+
+Topics:
+{topics_str}
+
+Respond in JSON format only, no markdown:
+{{
+    "ranked_topics": ["topic1", "topic2", ...],
+    "analysis": "Brief explanation in English (2-3 sentences)",
+    "trending_keywords": ["keyword1", "keyword2", "keyword3"]
+}}"""
+
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=500,
+            temperature=0.3,
+        )
+
+        import json
+        content = response.choices[0].message.content.strip()
+
+        # Xóa markdown nếu có
+        content = content.replace("```json", "").replace("```", "").strip()
+        result = json.loads(content)
+
+        return {
+            "ranked_topics": result.get("ranked_topics", topic_titles),
+            "analysis": result.get("analysis", ""),
+            "trending_keywords": result.get("trending_keywords", [])
+        }
+
+    except Exception as e:
+        print(f"[AI] Error analyzing trends: {e}")
+        return {
+            "ranked_topics": topic_titles,
+            "analysis": "Không thể phân tích xu hướng",
+            "trending_keywords": []
+        }

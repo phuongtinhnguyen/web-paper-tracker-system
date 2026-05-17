@@ -144,7 +144,6 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 - [x] UI Trang chi tiết paper theo abstract
 - [x] Gọi API trả về tiêu đề, abstract, tác giả, ngày công bố, url paper
 - [x] Hiển thị abstract, summary, tác giả, ngày công bố và link paper
-- [ ] Hiển thị những bài báo liên quan
 
 ### Luu paper yêu thích
 
@@ -154,6 +153,7 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 - [x] Gọi API bỏ lưu paper yêu thích
 - [x] UI Trang danh sách paper yêu thích
 - [x] Gọi API hiển thị danh sách paper yêu thích của user đang login
+- [ ] Bug Gọi API bỏ lưu paper yêu thích
 
 
 ### Chưa cần làm ở sprint 1
@@ -165,25 +165,22 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 ### Nâng cao - Phát hiện paper trùng hoặc gần giống
 
 - [ ] UI hiển thị cảnh báo paper trùng/gần giống
-- [ ] UI hiển thị phần trăm similarity
 
 ### Nâng cao - Gửi thong bao khi co paper mới
 
 - [ ] UI notification khi có paper mới
-- [ ] Badge/counter số paper mới
 - [ ] Trạng thái đã đọc thông báo
 
 ### Nâng cao - Thong ke xu hưong theo chủ đề
 
 - [ ] Dashboard thống kê số paper theo chủ đề
-- [ ] Biểu đồ xu hướng theo thời gian
-- [ ] Bộ lọc thời gian cho thống kê
 
 ### Nâng cao - Chấm điem paper đang đọc
 
-- [ ] UI chấm điểm paper
-- [ ] Hiển thị điểm đã chấm
+- [ ] UI chấm điểm paper (sao trung bình + button đánh giá + popup đánh giá)
 - [ ] Gửi điểm chấm lên Backend API
+- [ ] Gọi API BE trả lại điểm trung bình mới
+- [ ] UI Refesh điểm trung bình sau khi đánh giá
 
 ---
 
@@ -280,6 +277,8 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 - [ ] API lưu điểm user chấm vào DB: `POST /api/v1/papers/:id/rating`
 - [ ] API lấy điểm paper của user: `GET /api/v1/papers/:id/rating/me`
 
+
+- [ ] API lịch sử đọc (trả kq và lưu kq)
 ---
 
 ## DB Checklist
@@ -347,10 +346,8 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 
 ### Nâng cao - Chấm điem paper đang đọc
 
-- [ ] Tạo 1 bảng `paper_ratings`
-- [ ] Cột `user_id`
-- [ ] Cột `paper_id`
-- [ ] Cột `rating`
+- [ ] Tạo 1 bảng `user_paper_interactions`
+- [ ] 1 cột avg_rating -> bảng papers
 
 ---
 
@@ -423,10 +420,11 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 - Không có
 
 ### Review + merge code
-- [ ]
 
 ### Docs
 - [ ] Vẽ sơ đồ ERD cho database
+- [ ] Các sơ đồ khác
+- [ ] Docs
 
 ---
 

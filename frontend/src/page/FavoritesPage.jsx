@@ -2,12 +2,14 @@ import { useState, useEffect } from "react";
 import { Trash2, Heart, Loader2 } from "lucide-react";
 import PaperCard from "../components/PaperCard";
 import Pagination from "../components/Pagination";
-import { getFavorites, removeFavorite } from "../services/API";
+import { getFavorites } from "../services/API";
+import { useFavorites } from "../contexts/FavoritesContext";
 
 export default function FavoritesPage() {
   const [favorites, setFavorites] = useState([]);
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const { favoriteIds, toggleFavorite } = useFavorites();
 
   // Phân trang
   const [currentPage, setCurrentPage] = useState(1);
@@ -54,14 +56,16 @@ export default function FavoritesPage() {
   }, [currentPage]);
 
   const handleRemoveFavorite = async (paperId) => {
-    try {
-      await removeFavorite(paperId);
-      
-      setCurrentPage((prev) =>
-        favorites.length === 1 && prev > 1 ? prev - 1 : prev
-      );
-    } catch {
-      setError("Không thể xóa bài viết khỏi yêu thích.");
+    // Optimistic: remove from local list immediately so the paper disappears
+    setFavorites((prev) => prev.filter((p) => p.id !== paperId));
+    setTotal((prev) => Math.max(0, prev - 1));
+    
+    // Also update global context
+    await toggleFavorite(paperId);
+    
+    // Nếu xóa hết bài trên trang hiện tại, quay về trang trước
+    if (favorites.length === 1 && currentPage > 1) {
+      setCurrentPage((prev) => prev - 1);
     }
   };
 
@@ -103,7 +107,7 @@ export default function FavoritesPage() {
                 </div>
                 <PaperCard
                   paper={p}
-                  isFavorite={true}
+                  isFavorite={favoriteIds.has(p.id)}
                   onToggleFavorite={() => handleRemoveFavorite(p.id)}
                 />
               </div>

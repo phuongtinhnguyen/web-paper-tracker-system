@@ -121,4 +121,36 @@ export const untrackTopic = (topicId) =>
 export const getRelatedPapers = (paperId, params = { limit: 5 }) =>
   api.get(`/papers/${paperId}/related`, { params });
 
+/** GET /papers/:id/matches?limit=5  -> { paper_id, matches: Paper[] } */
+export const getMatchingPapers = (paperId, params = { limit: 5 }) =>
+  api.get(`/papers/${paperId}/matches`, { params });
+
+/** POST /papers/:id/rating  -> { paper_id, rating } */
+export const submitRating = (paperId, rating) =>
+  api.post(`/papers/${paperId}/rating`, { rating });
+
+/** GET /papers/:id/rating/me  -> { paper_id, rating } */
+export const getMyRating = (paperId) =>
+  api.get(`/papers/${paperId}/rating/me`);
+
+// ── STATS / TRENDS ────────────────────────────────────────────────────────────
+
+/** GET /stats/topics/trends  -> { data: Topic[] } */
+export const getTrendingTopics = () =>
+  api.get("/stats/topics/trends");
+
+// ── NOTIFICATIONS ─────────────────────────────────────────────────────────────
+
+/** GET /notifications  -> { data: Notification[] } */
+export const getNotifications = (params = {}) =>
+  api.get("/notifications", { params });
+
+/** PATCH /notifications/:id/read  -> { notification_id, is_read } */
+export const markNotificationRead = (id) =>
+  api.patch(`/notifications/${id}/read`);
+
+/** PATCH /notifications/read-all  -> { message } */
+export const markAllNotificationsRead = () =>
+  api.patch("/notifications/read-all");
+
 export default api;

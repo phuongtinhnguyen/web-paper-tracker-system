@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import SearchBar from "./SearchBar";
+import NotificationBell from "./NotificationBell";
 
 // Lấy username từ localStorage
 const getUsername = () => {
@@ -43,11 +44,14 @@ export default function MainLayout({ onSearch, onClearSearch }) {
                   {username}
                 </p>
               </div>
-              {shouldShowSearchBar && (
-                <div className="flex-1 max-w-2xl">
-                  <SearchBar onSearch={onSearch} onClear={onClearSearch} />
-                </div>
-              )}
+              <div className="flex items-center gap-4">
+                {shouldShowSearchBar && (
+                  <div className="flex-1 max-w-2xl">
+                    <SearchBar onSearch={onSearch} onClear={onClearSearch} />
+                  </div>
+                )}
+                <NotificationBell />
+              </div>
             </div>
           </div>
         </header>

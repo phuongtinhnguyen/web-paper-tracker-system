@@ -66,6 +66,7 @@ class Paper(Base):
     authors = Column(String(500))
     published_date = Column(DateTime)
     pdf_url = Column(String(500))
+    avg_rating = Column(Float, default=0.0)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Khóa ngoại trỏ về bảng topics

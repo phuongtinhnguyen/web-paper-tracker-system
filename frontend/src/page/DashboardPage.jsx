@@ -3,8 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import { Loader2, ChevronDown, ListFilter } from "lucide-react";
 import PaperCard from "../components/PaperCard";
 import Pagination from "../components/Pagination";
-import { getPapers, searchPapers, addFavorite, removeFavorite } from "../services/API";
-import SearchBar from "../components/SearchBar";
+import { getPapers, searchPapers } from "../services/API";
+import { useFavorites } from "../contexts/FavoritesContext";
 
 export default function DashboardPage({ searchQuery }) {
   const [filter, setFilter] = useState("all");
@@ -12,7 +12,7 @@ export default function DashboardPage({ searchQuery }) {
   const filterRef = useRef(null);
   const [papers, setPapers] = useState([]);
   const [searchParams] = useSearchParams();
-  const [favorites, setFavorites] = useState(new Set());
+  const { favoriteIds, toggleFavorite } = useFavorites();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -105,32 +105,6 @@ export default function DashboardPage({ searchQuery }) {
     "2days": "2 ngày qua"
   };
 
-  const handleToggleFavorite = async (paper) => {
-    const paperId = paper.id;
-    const isFav = favorites.has(paperId);
-
-    // Optimistic UI update
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      if (isFav) next.delete(paperId);
-      else next.add(paperId);
-      return next;
-    });
-
-    try {
-      if (isFav) await removeFavorite(paperId);
-      else await addFavorite(paperId);
-    } catch (err) {
-      // Rollback nếu gọi API lỗi
-      setFavorites((prev) => {
-        const next = new Set(prev);
-        if (isFav) next.add(paperId);
-        else next.delete(paperId);
-        return next;
-      });
-    }
-  };
-
   return (
     <div className="max-w-7xl mx-auto pb-10">
       <header className="mb-8 px-4 flex items-center justify-between gap-4">
@@ -190,12 +164,12 @@ export default function DashboardPage({ searchQuery }) {
           <div className="grid grid-cols-1 gap-4">
             {papers.length > 0 ? (
               papers.map((paper) => (
-                <PaperCard
-                  key={paper.id}
-                  paper={paper}
-                  isFavorite={favorites.has(paper.id)}
-                  onToggleFavorite={() => handleToggleFavorite(paper)}
-                />
+                  <PaperCard
+                    key={paper.id}
+                    paper={paper}
+                    isFavorite={favoriteIds.has(paper.id)}
+                    onToggleFavorite={() => toggleFavorite(paper.id)}
+                  />
               ))
             ) : (
               <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-gray-200 text-gray-400">

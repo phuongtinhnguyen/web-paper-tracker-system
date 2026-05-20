@@ -7,9 +7,8 @@ import {
   getHistory,
   removeHistory,
   clearHistory,
-  addFavorite,
-  removeFavorite,
 } from "../services/API";
+import { useFavorites } from "../contexts/FavoritesContext";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -37,7 +36,7 @@ function parsePaginatedPapers(response) {
 
 export default function HistoryPage({ searchQuery }) {
   const [historyList, setHistoryList] = useState([]);
-  const [favorites, setFavorites] = useState(new Set());
+  const { favoriteIds, toggleFavorite } = useFavorites();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -78,30 +77,7 @@ export default function HistoryPage({ searchQuery }) {
     setCurrentPage(1);
   }, [searchQuery]);
 
-  const toggleFavorite = async (paper) => {
-    const paperId = paper.id;
-    const isFav = favorites.has(paperId);
-
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      if (isFav) next.delete(paperId);
-      else next.add(paperId);
-      return next;
-    });
-
-    try {
-      if (isFav) await removeFavorite(paperId);
-      else await addFavorite(paperId);
-    } catch {
-      setFavorites((prev) => {
-        const next = new Set(prev);
-        if (isFav) next.add(paperId);
-        else next.delete(paperId);
-        return next;
-      });
-    }
-  };
-
+  // Remove local toggleFavorite - using global toggleFavorite from context
   const handleRemoveItem = async (id) => {
     try {
       await removeHistory(id);
@@ -179,8 +155,8 @@ export default function HistoryPage({ searchQuery }) {
                 </div>
                 <PaperCard
                   paper={p}
-                  isFavorite={favorites.has(p.id)}
-                  onToggleFavorite={() => toggleFavorite(p)}
+                  isFavorite={favoriteIds.has(p.id)}
+                  onToggleFavorite={() => toggleFavorite(p.id)}
                 />
               </div>
             ))}

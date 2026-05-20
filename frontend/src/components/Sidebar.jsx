@@ -1,7 +1,7 @@
 import { 
   Settings, Heart, LayoutDashboard, 
   CheckCircle2, LogOut, BellDot, 
-  Bookmark
+  Bookmark, TrendingUp
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
@@ -21,6 +21,7 @@ export default function Sidebar({ username = "User" }) {
   // Danh sách các mục menu chính
   const menuItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { path: '/trend', icon: TrendingUp, label: 'Xu hướng' },
     { path: '/topics', icon: Bookmark, label: 'Quản lý chủ đề' },
     { path: '/favorites', icon: Heart, label: 'Mục yêu thích' },
     { path: '/history', icon: CheckCircle2, label: 'Lịch sử đọc' },
@@ -30,6 +31,8 @@ export default function Sidebar({ username = "User" }) {
   const handleLogout = () => {
     localStorage.removeItem("access_token");
     localStorage.removeItem("username");
+    // Dispatch event để FavoritesContext reset và các component khác cập nhật
+    window.dispatchEvent(new Event("auth-change"));
     navigate("/");
   };
 

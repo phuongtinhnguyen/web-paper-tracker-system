@@ -7,6 +7,8 @@ import {
   ExternalLink,
   Heart,
   Loader2,
+  Star,
+  X,
 } from "lucide-react";
 import {
   getPaperById,
@@ -14,6 +16,9 @@ import {
   addFavorite,
   removeFavorite,
   getRelatedPapers,
+  getMatchingPapers,
+  submitRating,
+  getMyRating,
 } from "../services/API";
 
 export default function PaperDetailPage() {
@@ -26,6 +31,18 @@ export default function PaperDetailPage() {
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState(null);
   const [relatedPapers, setRelatedPapers] = useState([]);
+  const [matchingPapers, setMatchingPapers] = useState([]);
+
+  // Rating state
+  const [avgRating, setAvgRating] = useState(0);
+  const [myRating, setMyRating] = useState(0);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [selectedStars, setSelectedStars] = useState(0);
+  const [ratingSubmitLoading, setRatingSubmitLoading] = useState(false);
+  const [ratingError, setRatingError] = useState(null);
+
+  // Hover stars
+  const [hoverStars, setHoverStars] = useState(0);
 
   useEffect(() => {
     const fetchPaper = async () => {
@@ -36,6 +53,11 @@ export default function PaperDetailPage() {
 
         setPaper(paperData);
         setIsFavorite(paperData.is_favorited || false);
+
+        // Lấy điểm trung bình từ paper data nếu có
+        if (paperData.avg_rating) {
+          setAvgRating(Number(paperData.avg_rating));
+        }
 
         if (!paperData.summary) {
           try {
@@ -64,6 +86,22 @@ export default function PaperDetailPage() {
     fetchPaper();
   }, [id]);
 
+  // Lấy đánh giá của user
+  useEffect(() => {
+    const fetchMyRating = async () => {
+      try {
+        const res = await getMyRating(id);
+        const data = res.data?.data || res.data;
+        if (data?.rating) {
+          setMyRating(Number(data.rating));
+        }
+      } catch {
+        // Chưa đánh giá hoặc API chưa có
+      }
+    };
+    if (id) fetchMyRating();
+  }, [id]);
+
   const handleToggleFavorite = async () => {
     try {
       if (isFavorite) {
@@ -73,7 +111,6 @@ export default function PaperDetailPage() {
       }
       setIsFavorite(!isFavorite);
     } catch {
-      // Revert state if API fails
       setIsFavorite(isFavorite);
     }
   };
@@ -93,12 +130,66 @@ export default function PaperDetailPage() {
 
           setRelatedPapers(Array.isArray(data) ? data : []);
         } catch {
-          // Không cần xử lý lỗi nghiêm trọng nếu không lấy được bài báo liên quan
+          // Không cần xử lý lỗi
         }
       }
     };
     fetchRelatedPapers();
   }, [paper?.id]);
+
+  // Lấy danh sách bài báo trùng/gần giống
+  useEffect(() => {
+    const fetchMatchingPapers = async () => {
+      if (paper) {
+        try {
+          const res = await getMatchingPapers(paper.id, { limit: 5 });
+          const data =
+            res.data?.data?.matches ||
+            res.data?.matches ||
+            res.data?.data ||
+            res.data ||
+            [];
+
+          setMatchingPapers(Array.isArray(data) ? data : []);
+        } catch {
+          // Không cần xử lý lỗi
+        }
+      }
+    };
+    fetchMatchingPapers();
+  }, [paper?.id]);
+
+  // Mở modal đánh giá
+  const handleOpenRating = () => {
+    setSelectedStars(myRating || 0);
+    setHoverStars(0);
+    setRatingError(null);
+    setShowRatingModal(true);
+  };
+
+  // Gửi đánh giá
+  const handleSubmitRating = async () => {
+    if (selectedStars === 0) return;
+    setRatingSubmitLoading(true);
+    setRatingError(null);
+    try {
+      const res = await submitRating(id, selectedStars);
+      const data = res.data?.data || res.data;
+
+      // Cập nhật điểm từ API trả về
+      if (data?.avg_rating) {
+        setAvgRating(Number(data.avg_rating));
+      }
+
+      setMyRating(selectedStars);
+      setShowRatingModal(false);
+    } catch (err) {
+      console.error("Rating error:", err?.response || err);
+      setRatingError("Không thể gửi đánh giá. Vui lòng thử lại sau.");
+    } finally {
+      setRatingSubmitLoading(false);
+    }
+  };
 
   // Parse authors
   let authors = [];
@@ -202,6 +293,7 @@ export default function PaperDetailPage() {
 
           {!paper.summary && summaryLoading && (
             <div className="mb-8 bg-green-50/50 border border-green-100 rounded-xl p-5 text-green-700 font-medium">
+              <Loader2 className="animate-spin inline mr-2" size={16} />
               Đang tạo tóm tắt...
             </div>
           )}
@@ -271,6 +363,103 @@ export default function PaperDetailPage() {
           </div>
         </div>
 
+        {/* Bài báo trùng hoặc gần giống */}
+        <div className="p-8 border-t border-gray-100 bg-yellow-50/30">
+          <h3 className="text-sm font-bold text-gray-700 uppercase tracking-widest mb-3 flex items-center gap-2">
+            
+            Bài báo trùng hoặc gần giống
+          </h3>
+          <div className="flex flex-col gap-4">
+            {matchingPapers.length > 0 ? (
+              matchingPapers.map((match) => {
+                const paperData = match.paper || match.matching_paper || match;
+                const matchAuthors = (() => {
+                  try {
+                    return typeof paperData.authors === "string"
+                      ? JSON.parse(paperData.authors)
+                      : paperData.authors || [];
+                  } catch {
+                    return paperData.authors ? [paperData.authors] : [];
+                  }
+                })();
+
+                return (
+                  <div
+                    key={paperData.id || match.id}
+                    className="border border-yellow-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-white"
+                  >
+                    <div className="flex items-start gap-2 mb-2">
+                      <span className="text-yellow-600 font-bold text-xs bg-yellow-100 px-2 py-0.5 rounded-full flex-shrink-0">
+                        {match.similarity_score
+                          ? `${Math.round(match.similarity_score * 100)}%`
+                          : "Trùng"}
+                      </span>
+                      <h4 className="font-bold text-gray-700">
+                        {paperData.title}
+                      </h4>
+                    </div>
+                    <p className="text-sm text-gray-500 mb-1">
+                      {Array.isArray(matchAuthors)
+                        ? matchAuthors.join(", ")
+                        : matchAuthors}
+                    </p>
+                    <p className="text-gray-600 text-sm line-clamp-2">
+                      {paperData.abstract?.substring(0, 200)}...
+                    </p>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="text-gray-500">Không có bài báo trùng hoặc gần giống.</p>
+            )}
+          </div>
+        </div>
+
+        {/* Đánh giá bài báo */}
+        <div className="p-8 border-t border-gray-100 bg-white">
+          <h3 className="text-sm font-bold text-gray-600 uppercase tracking-widest mb-4">
+            Đánh giá bài báo
+          </h3>
+          <div className="flex items-center gap-6">
+            {/* Hiển thị sao trung bình */}
+            <div className="flex flex-col items-center gap-2">
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
+                  <Star
+                    key={star}
+                    size={16}
+                    className={
+                      star <= Math.round(avgRating)
+                        ? "text-red-500 fill-red-500"
+                        : "text-gray-200 fill-gray-200"
+                    }
+                  />
+                ))}
+              </div>
+              <span className="text-xl font-black text-gray-700">
+                {avgRating > 0 ? avgRating.toFixed(1) : "—"}
+                <span className="text-sm font-normal text-gray-400"> /10</span>
+              </span>
+            </div>
+
+            {/* Button đánh giá */}
+            <div className="flex flex-col items-center gap-2">
+              {myRating > 0 && (
+                <p className="text-xs text-gray-500">
+                  Bạn đã đánh giá: <span className="font-bold text-red-500">{myRating}</span>/10
+                </p>
+              )}
+              <button
+                onClick={handleOpenRating}
+                className="px-6 py-2.5 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-all shadow-md hover:shadow-lg active:scale-95 flex items-center gap-2"
+              >
+                <Star size={16} fill="white" />
+                {myRating > 0 ? "Đánh giá lại" : "Đánh giá"}
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Footer */}
         <div className="p-6 border-t border-gray-100 bg-gray-50/30 flex gap-4">
           <a
@@ -284,6 +473,83 @@ export default function PaperDetailPage() {
           </a>
         </div>
       </div>
+
+      {/* Modal đánh giá */}
+      {showRatingModal && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-80 border border-gray-100 animate-in zoom-in duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-700">Đánh giá bài báo</h3>
+              <button
+                onClick={() => setShowRatingModal(false)}
+                className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Stars selection */}
+            <div className="flex justify-center gap-1 mb-6">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => setSelectedStars(star)}
+                  onMouseEnter={() => setHoverStars(star)}
+                  onMouseLeave={() => setHoverStars(0)}
+                  className="p-0.5 transition-transform hover:scale-110"
+                >
+                  <Star
+                    size={24}
+                    className={
+                      star <= (hoverStars || selectedStars)
+                        ? "text-red-500 fill-red-500"
+                        : "text-gray-200 fill-gray-200"
+                    }
+                  />
+                </button>
+              ))}
+            </div>
+
+            {/* Hiển thị số sao đã chọn */}
+            <p className="text-center text-lg font-bold text-gray-700 mb-4">
+              {selectedStars > 0 ? `${selectedStars} / 10 sao` : "Chọn số sao"}
+            </p>
+
+            {/* Error message */}
+            {ratingError && (
+              <p className="text-center text-xs text-red-500 font-medium mb-4">
+                {ratingError}
+              </p>
+            )}
+
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowRatingModal(false)}
+                className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSubmitRating}
+                disabled={selectedStars === 0 || ratingSubmitLoading}
+                className={`flex-1 py-2.5 rounded-xl font-bold text-white transition-all ${
+                  selectedStars === 0
+                    ? "bg-gray-300 cursor-not-allowed"
+                    : "bg-red-500 hover:bg-red-600 shadow-md"
+                }`}
+              >
+                {ratingSubmitLoading ? (
+                  <Loader2 className="animate-spin mx-auto" size={18} />
+                ) : (
+                  "Xác nhận"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

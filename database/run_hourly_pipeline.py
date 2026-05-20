@@ -2,6 +2,7 @@ from pathlib import Path
 import argparse
 import logging
 import sys
+from sqlalchemy import func
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from dotenv import load_dotenv
@@ -19,7 +20,7 @@ load_dotenv(AI_DIR / ".env")
 
 from crawler.crawler_DB import run_crawler  # noqa: E402
 from database import SessionLocal  # noqa: E402
-from models import Paper  # noqa: E402
+from models import Paper, UserPaperInteraction  # noqa: E402
 from paper_ai import check_duplicate, summarize_pending_papers  # noqa: E402
 
 
@@ -84,6 +85,38 @@ def summarize_pending(batch_size: int) -> int:
     finally:
         db.close()
 
+def update_average_ratings() -> int:
+    logger.info("[PIPELINE] Start calculating average ratings...")
+    db = SessionLocal()
+    update_count = 0
+
+    try:
+        # 1. Dùng func.avg để tính điểm trung bình, nhóm theo từng bài báo (group_by)
+        # Chỉ lấy những đánh giá có điểm (rating is not None)
+        rating_results = db.query(
+            UserPaperInteraction.paper_id,
+            func.avg(UserPaperInteraction.rating).label('avg_score')
+        ).filter(
+            UserPaperInteraction.rating.isnot(None)
+        ).group_by(UserPaperInteraction.paper_id).all()
+
+        # 2. Cập nhật kết quả vào bảng Paper
+        for paper_id, avg_score in rating_results:
+            db.query(Paper).filter(Paper.id == paper_id).update(
+                {"avg_rating": round(avg_score, 1)} # Làm tròn 1 chữ số thập phân (VD: 4.5)
+            )
+            update_count += 1
+            
+        db.commit() # Chốt lưu toàn bộ thay đổi
+        logger.info("[PIPELINE] Successfully updated average ratings for %s papers.", update_count)
+        return update_count
+
+    except Exception as e:
+        db.rollback()
+        logger.error("[PIPELINE] Failed to update average ratings: %s", e)
+        return 0
+    finally:
+        db.close()
 
 def run_pipeline(
     crawler_max_results: int,
@@ -130,11 +163,14 @@ def run_pipeline(
         summarized_count,
     )
 
+    updated_ratings_count = update_average_ratings()
+
     return {
         "success": True,
         "crawler": crawler_result,
         "duplicate_results": duplicate_results,
         "summarized_count": summarized_count,
+        "updated_ratings_count": updated_ratings_count
     }
 
 

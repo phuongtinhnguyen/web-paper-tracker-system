@@ -21,6 +21,9 @@ Frontend chịu trách nhiệm cung cấp giao diện người dùng cho hệ th
 - Theo dõi lịch sử đọc
 - Quản lý chủ đề theo dõi
 - Xem tóm tắt và chi tiết bài báo
+- Xem notification đã tích hợp với BE; topic xu hướng, paper liên quan/trùng và chấm điểm paper ở mức UI chuẩn bị tích hợp
+
+Ghi chú trạng thái tích hợp: một số UI/API advanced đã có ở Frontend nhưng Backend Express chưa implement route tương ứng, gồm history, trends, related/matching papers và ratings. Notification APIs đã có ở Backend.
 
 ---
 
@@ -56,7 +59,7 @@ App (Router)
 ├── RegisterPage
 └── MainLayout (Protected Routes)
     ├── Sidebar (Navigation)
-    ├── Header (Search, User Info)
+    ├── Header (Search, User Info, NotificationBell)
     └── Outlet (Child Routes)
         ├── DashboardPage
         │   ├── SearchBar
@@ -70,9 +73,11 @@ App (Router)
         ├── HistoryPage
         │   ├── PaperCard (list)
         │   └── Pagination
+        ├── TrendPage
         ├── TopicsPage (Topic Management)
         ├── TrackingTopicsPage (Tracked Topics)
-        └── Settings (placeholder)
+        ├── PaperDetailPage
+        └── Settingpage
 ```
 
 ---
@@ -186,15 +191,15 @@ const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
 | Function | Method | Endpoint | Description |
 |----------|--------|----------|-------------|
 | `getTopics()` | GET | `/topics` | Lấy danh sách chủ đề |
-| `getPapersByTopic(topicId, params)` | GET | `/topics/:topicId/papers` | Lấy bài báo theo chủ đề |
+| `getPapersByTopic(topicId, params)` | GET | `/papers?topic_id=:topicId` | Lấy bài báo theo chủ đề bằng query `topic_id` |
 
 ### Favorites APIs
 
 | Function | Method | Endpoint | Description |
 |----------|--------|----------|-------------|
 | `getFavorites(params)` | GET | `/favorites` | Lấy danh sách bài báo yêu thích |
-| `addFavorite(paperId)` | POST | `/favorites/:paperId` | Thêm bài báo vào yêu thích |
-| `removeFavorite(paperId)` | DELETE | `/favorites/:paperId` | Xóa bài báo khỏi yêu thích |
+| `addFavorite(paperId)` | POST | `/papers/favorite/:paperId` | Thêm bài báo vào yêu thích |
+| `removeFavorite(paperId)` | DELETE | `/papers/favorite/:paperId` | Xóa bài báo khỏi yêu thích |
 
 ### History APIs
 
@@ -204,13 +209,27 @@ const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
 | `removeHistory(paperId)` | DELETE | `/history/:paperId` | Xóa một mục khỏi lịch sử |
 | `clearHistory()` | DELETE | `/history` | Xóa toàn bộ lịch sử |
 
+Ghi chú: FE đã có page `/history` và các API function trên, nhưng Backend Express hiện chưa implement route `/history`.
+
 ### Tracked Topics APIs
 
 | Function | Method | Endpoint | Description |
 |----------|--------|----------|-------------|
-| `getTrackedTopics()` | GET | `/user/tracked-topics` | Lấy danh sách chủ đề đang theo dõi |
-| `trackTopic(topicId)` | POST | `/user/tracked-topics/:topicId` | Theo dõi một chủ đề |
-| `untrackTopic(topicId)` | DELETE | `/user/tracked-topics/:topicId` | Bỏ theo dõi một chủ đề |
+| `getTrackedTopics()` | GET | `/user-topics` | Lấy danh sách chủ đề đang theo dõi |
+| `trackTopic(topicId)` | POST | `/user-topics` | Theo dõi một chủ đề bằng body `{ topic_id }` |
+| `untrackTopic(topicId)` | DELETE | `/user-topics/:topicId` | Bỏ theo dõi một chủ đề |
+
+### Advanced/Upcoming APIs FE Đã Chuẩn Bị Gọi
+
+Các API dưới đây đã có function/UI ở FE nhưng Backend Express hiện chưa implement đầy đủ:
+
+| Function | Method | Endpoint | Ghi chú |
+|----------|--------|----------|---------|
+| `getRelatedPapers(paperId)` | GET | `/papers/:id/related?limit=5` | Paper detail section liên quan |
+| `getMatchingPapers(paperId)` | GET | `/papers/:id/matches?limit=5` | Paper detail section trùng/gần giống |
+| `getMyRating(paperId)` | GET | `/papers/:id/rating/me` | Lấy điểm user đã chấm |
+| `submitRating(paperId, rating)` | POST | `/papers/:id/rating` | Gửi điểm chấm paper |
+| `getTrendingTopics()` | GET | `/stats/topics/trends` | Trang `/trend` |
 
 ---
 
@@ -245,11 +264,14 @@ const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
 | Path | Icon | Label |
 |------|------|-------|
 | `/dashboard` | LayoutDashboard | Dashboard |
+| `/trend` | TrendingUp | Xu hướng |
 | `/topics` | Bookmark | Quản lý Topic |
 | `/favorites` | Heart | Mục yêu thích |
 | `/history` | CheckCircle2 | Lịch sử đọc |
 | `/tracking-topics` | BellDot | Theo dõi chủ đề |
 | `/settings` | Settings | Cài đặt |
+
+Ghi chú: Header hiện có `NotificationBell`. Component này gọi notification APIs đã có ở Backend: `/notifications`, `/notifications/:id/read`, `/notifications/read-all`, đồng thời mở SSE stream `/notifications/stream` để nhận notification realtime.
 
 ---
 

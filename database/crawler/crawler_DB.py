@@ -17,8 +17,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 
-def run_crawler(max_results_per_topic: int = 10, sleep_seconds: int = 10):
-    logger.info("Start arXiv crawler.")
+def run_crawler(max_results_per_topic: int = 10, sleep_seconds: int = 3):
+    logger.info("Bat dau crawler arXiv.")
 
     db = SessionLocal()
     result = {
@@ -32,7 +32,7 @@ def run_crawler(max_results_per_topic: int = 10, sleep_seconds: int = 10):
 
     try:
         for topic_name in TARGET_TOPICS:
-            logger.info("--- Processing topic: %s ---", topic_name)
+            logger.info("--- Dang xu ly topic: %s ---", topic_name)
 
             topic = db.query(Topic).filter(Topic.name == topic_name).first()
 
@@ -41,7 +41,7 @@ def run_crawler(max_results_per_topic: int = 10, sleep_seconds: int = 10):
                 db.add(topic)
                 db.commit()
                 db.refresh(topic)
-                logger.info("Created topic: %s", topic_name)
+                logger.info("Da tao topic: %s", topic_name)
 
             papers_data = fetch_papers_by_topic(
                 topic_name,
@@ -54,7 +54,7 @@ def run_crawler(max_results_per_topic: int = 10, sleep_seconds: int = 10):
             result["fetched_paper_count"] += fetched_count
 
             logger.info(
-                "Fetched %s papers from arXiv for topic '%s'.",
+                "Da lay %s paper tu arXiv cho topic '%s'.",
                 fetched_count,
                 topic_name,
             )
@@ -95,9 +95,9 @@ def run_crawler(max_results_per_topic: int = 10, sleep_seconds: int = 10):
 
             if new_papers_count > 0:
                 db.commit()
-                logger.info("Saved %s new papers.", new_papers_count)
+                logger.info("Da luu %s paper moi.", new_papers_count)
             else:
-                logger.info("No new papers for this topic.")
+                logger.info("Khong co paper moi cho topic nay.")
 
             result["topics"].append({
                 "topic_name": topic_name,
@@ -106,7 +106,7 @@ def run_crawler(max_results_per_topic: int = 10, sleep_seconds: int = 10):
                 "skipped_existing": skipped_existing_count,
             })
             logger.info(
-                "Topic '%s': fetched=%s, inserted=%s, skipped_existing=%s.",
+                "Topic '%s': da lay=%s, da them=%s, bo qua do da ton tai=%s.",
                 topic_name,
                 fetched_count,
                 new_papers_count,
@@ -114,17 +114,17 @@ def run_crawler(max_results_per_topic: int = 10, sleep_seconds: int = 10):
             )
 
             if sleep_seconds > 0:
-                logger.info("Sleep %s seconds to avoid arXiv rate limit.", sleep_seconds)
+                logger.info("Nghi %s giay de tranh rate limit arXiv.", sleep_seconds)
                 time.sleep(sleep_seconds)
 
     except Exception as error:
-        logger.error("Crawler failed: %s", error)
+        logger.error("Crawler bi loi: %s", error)
         db.rollback()
         result["success"] = False
         result["error"] = str(error)
     finally:
         db.close()
-        logger.info("Crawler DB session closed.")
+        logger.info("Da dong session DB cua crawler.")
 
     return result
 

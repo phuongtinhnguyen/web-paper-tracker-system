@@ -29,6 +29,13 @@ STOPWORDS = {
 }
 
 
+def _safe_print(message: str) -> None:
+    """Print logs without crashing on Windows terminals with legacy encodings."""
+    encoding = sys.stdout.encoding or "utf-8"
+    safe_message = message.encode(encoding, errors="replace").decode(encoding)
+    print(safe_message)
+
+
 def _get_paper_model():
     """Import database model only when a DB-related AI function needs it."""
     database_path = str(DATABASE_DIR)
@@ -88,10 +95,10 @@ def summarize_pending_papers(db: Session, batch_size: int = 20):
             paper.summary = summarize_abstract(paper.abstract)
             db.commit()
             success_count += 1
-            print(f"[AI] Đã tóm tắt: {paper.title[:60]}...")
+            _safe_print(f"[AI] Da tom tat: {paper.title[:60]}...")
         except Exception as error:
             db.rollback()
-            print(f"[AI] Lỗi tóm tắt: {error}")
+            _safe_print(f"[AI] Loi tom tat: {error}")
 
     return success_count
 
@@ -124,10 +131,7 @@ def _cosine_similarity(freq_a: dict, freq_b: dict) -> float:
 
 
 def _duplicate_status(score: float) -> str:
-    if score >= 0.90:
-        return "Trùng hoàn toàn"
-
-    return "Gần giống"
+    return "Trung hoan toan" if score >= 0.90 else "Gan giong"
 
 
 def check_duplicate(
@@ -234,7 +238,7 @@ Respond in JSON format only, no markdown:
         }
 
     except Exception as e:
-        print(f"[AI] Error analyzing trends: {e}")
+        _safe_print(f"[AI] Error analyzing trends: {e}")
         return {
             "ranked_topics": topic_titles,
             "analysis": "Không thể phân tích xu hướng",

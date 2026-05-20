@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Plus, Tag, ChevronDown, Hash, Loader2, X, LayoutGrid } from "lucide-react";
 import PaperCard from "../components/PaperCard";
 import Pagination from "../components/Pagination";
@@ -17,6 +18,7 @@ function extractTopics(response) {
 
 export default function TrackingTopics() {
   const dropdownRef = useRef(null);
+  const [searchParams] = useSearchParams();
 
   const [allTopics, setAllTopics] = useState([]);
   const [followedTopics, setFollowedTopics] = useState([]);
@@ -33,6 +35,7 @@ export default function TrackingTopics() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 5;
+  const selectedTopicIdFromQuery = searchParams.get("topic_id");
 
   // Đóng dropdown khi click ngoài
   useEffect(() => {
@@ -99,6 +102,18 @@ export default function TrackingTopics() {
     setCurrentPage(1);
     setPapers([]);
   };
+
+  useEffect(() => {
+    if (!selectedTopicIdFromQuery || followedTopics.length === 0) return;
+
+    const topic = followedTopics.find(
+      (item) => String(item.id) === String(selectedTopicIdFromQuery)
+    );
+
+    if (topic && selectedTopic?.id !== topic.id) {
+      handleTopicSelect(topic);
+    }
+  }, [selectedTopicIdFromQuery, followedTopics, selectedTopic?.id]);
 
   const addTopic = async (topic) => {
     if (followedTopics.find((t) => t.id === topic.id)) {

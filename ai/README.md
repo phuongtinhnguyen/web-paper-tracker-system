@@ -12,7 +12,7 @@ Người phụ trách: Nguyễn Trọng Phúc
 | Tóm tắt batch | Lấy các paper có `summary IS NULL`, tóm tắt rồi lưu vào `papers.summary` |
 | Summary API service | FastAPI endpoint `/summarize` để Backend gọi khi cần tóm tắt on-demand |
 | Kiểm tra trùng | So sánh `title + abstract` bằng cosine similarity |
-| Script test duplicate | Chạy duplicate checker từ command line |
+| Script test duplicate | Chạy duplicate checker từ command line; hiện trả/log kết quả, chưa lưu vào `matching_papers` |
 | Router FastAPI | Optional/legacy, chưa phải luồng chính hiện tại |
 
 ---
@@ -123,6 +123,8 @@ Sắp xếp giảm dần theo similarity
         v
 Trả về is_duplicate, match_count, highest_similarity, matches[]
 ```
+
+Ghi chú hiện tại: DB đã có bảng `matching_papers`, nhưng `check_duplicate()` và pipeline hiện mới trả/log kết quả. Bước lưu các cặp trùng/gần giống vào DB sẽ làm khi Backend/API duplicate được triển khai.
 
 ### 3.3. Luồng Kết Hợp Với Database Pipeline
 

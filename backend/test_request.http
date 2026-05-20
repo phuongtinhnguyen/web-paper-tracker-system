@@ -106,3 +106,33 @@ Authorization: Bearer <access_token>
 ### Lay muc yeu thich
 GET http://localhost:8000/api/v1/favorites?page=1&limit=5
 Authorization: Bearer <access_token>
+
+### Lay danh sach thong bao
+GET http://localhost:8000/api/v1/notifications?page=1&limit=10
+Authorization: Bearer <access_token>
+
+### Lay thong bao chua doc
+GET http://localhost:8000/api/v1/notifications?page=1&limit=10&unread_only=true
+Authorization: Bearer <access_token>
+
+### Notification SSE stream - dung tren browser/EventSource
+# GET http://localhost:8000/api/v1/notifications/stream?token=<access_token>
+
+### Danh dau 1 thong bao da doc
+PATCH http://localhost:8000/api/v1/notifications/1/read
+Authorization: Bearer <access_token>
+
+### Danh dau tat ca thong bao da doc
+PATCH http://localhost:8000/api/v1/notifications/read-all
+Authorization: Bearer <access_token>
+
+### Internal push notification tu DB pipeline sang BE
+POST http://localhost:8000/api/v1/internal/notifications/push
+x-internal-api-secret: <internal_api_secret>
+Content-Type: application/json
+
+{
+  "event": "NEW_NOTIFICATION",
+  "notification_ids": [1],
+  "notification_count": 1
+}

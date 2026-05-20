@@ -7,7 +7,7 @@ Thư mục `database/` quản lý phần database của Web Paper Tracker System
 - Quản lý migration bằng Alembic.
 - Seed dữ liệu user mẫu.
 - Crawl paper từ arXiv và lưu vào DB.
-- Chạy pipeline theo giờ để crawl, check trùng và summarize.
+- Chạy pipeline theo giờ để crawl, tạo notification, check trùng và summarize.
 
 ---
 
@@ -16,11 +16,11 @@ Thư mục `database/` quản lý phần database của Web Paper Tracker System
 | Chức năng | Mô tả |
 | --- | --- |
 | Database connection | Đọc `DATABASE_URL` từ `database/.env` và tạo SQLAlchemy session |
-| Models | Định nghĩa bảng `users`, `topics`, `papers`, `favorites`, `user_topics` |
+| Models | Định nghĩa bảng core và advanced: `users`, `topics`, `papers`, `favorites`, `user_topics`, `related_papers`, `matching_papers`, `user_paper_interactions`, `notifications`, `user_notifications` |
 | Migration | Dùng Alembic để tạo/cập nhật schema |
 | Seed data | Tạo user mẫu phục vụ test Backend/Frontend |
 | arXiv crawler | Lấy paper mới theo topic từ arXiv API |
-| Hourly pipeline | Chạy crawler theo giờ, check trùng và gọi AI summary |
+| Hourly pipeline | Chạy crawler theo giờ, tạo notification gộp theo topic, check trùng và gọi AI summary |
 
 Ghi chú:
 
@@ -35,13 +35,14 @@ Ghi chú:
 ```txt
 database/
 |-- .env                         # DATABASE_URL, không commit
+|-- .env.example                 # Mẫu cấu hình DATABASE_URL và BE notification webhook
 |-- .gitignore                   # Ignore .env, .venv, __pycache__
 |-- README.md                    # Tài liệu module database
 |-- requirements.txt             # Thư viện Python cho database/crawler/pipeline
 |-- database.py                  # Engine, SessionLocal, Base
 |-- models.py                    # SQLAlchemy models
 |-- seed_data.py                 # Seed user mẫu
-|-- run_hourly_pipeline.py       # Scheduler crawl + duplicate check + summary
+|-- run_hourly_pipeline.py       # Scheduler crawl + notification + duplicate check + summary
 |-- alembic.ini                  # Config Alembic
 |-- alembic/
 |   |-- env.py                   # Alembic environment
@@ -49,6 +50,8 @@ database/
 |   |-- versions/
 |       |-- b013cd206c13_...py   # Migration khởi tạo bảng chính
 |       |-- d39714405368_...py   # Migration thêm topic_id vào papers
+|       |-- b813dd37eebb_...py   # Migration thêm related/matching/notifications/interactions/trending
+|       |-- e192a41f90eb_...py   # Migration thêm avg_rating vào papers
 |-- crawler/
     |-- arxiv_client.py          # Gọi arXiv API, chưa ghi DB
     |-- crawler_DB.py            # Gọi arXiv client và lưu paper vào DB
@@ -102,7 +105,7 @@ File chính:
 database/models.py
 ```
 
-Các bảng hiện có:
+Các bảng/cột core hiện có:
 
 ```txt
 users
@@ -113,12 +116,28 @@ user_topics
 alembic_version
 ```
 
+Các bảng/cột advanced đã có trong `models.py` và migration:
+
+```txt
+related_papers
+matching_papers
+user_paper_interactions
+notifications
+user_notifications
+topics.trending
+papers.avg_rating
+```
+
 Quan hệ chính:
 
 - Một `Topic` có nhiều `Paper` qua `papers.topic_id`.
 - Một `User` có thể follow nhiều `Topic` qua `user_topics`.
 - Một `User` có thể favorite nhiều `Paper` qua `favorites`.
 - `favorites` và `user_topics` dùng composite primary key.
+- `related_papers` lưu quan hệ paper liên quan.
+- `matching_papers` lưu quan hệ paper trùng/gần giống.
+- `user_paper_interactions` lưu trạng thái đọc, rating và notes của user với paper.
+- `notifications` lưu nội dung thông báo; `user_notifications` phân phối thông báo cho từng user và lưu trạng thái đã đọc.
 
 ### 3.3. Migration Flow
 
@@ -179,6 +198,12 @@ run_crawler()
 Insert paper mới vào DB
         |
         v
+create_new_paper_notifications()
+        |
+        v
+notify_backend_new_notifications()
+        |
+        v
 check_duplicate() từ ai/paper_ai.py
         |
         v
@@ -188,7 +213,11 @@ summarize_pending_papers() từ ai/paper_ai.py
 Lưu summary vào papers.summary
 ```
 
-Hiện tại duplicate checker chỉ log/trả kết quả, chưa lưu vào DB vì bảng `matching_papers` chưa có trong schema hiện tại.
+`create_new_paper_notifications()` gom các paper mới theo `topic_id`, tạo một notification cho mỗi topic và phân phối cho các user đang follow topic đó qua `user_notifications`.
+
+`notify_backend_new_notifications()` gọi Backend internal webhook `POST /api/v1/internal/notifications/push` với danh sách `notification_ids` vừa tạo. Backend dùng tín hiệu này để đẩy notification realtime xuống FE qua SSE.
+
+Hiện tại duplicate checker chỉ log/trả kết quả trong pipeline, chưa ghi các cặp trùng/gần giống vào bảng `matching_papers` dù schema đã có.
 
 ---
 
@@ -233,6 +262,10 @@ Nội dung:
 
 ```env
 DATABASE_URL=postgresql://<username>:<password>@<host>/<dbname>?sslmode=require
+
+# Optional: bật realtime notification DB pipeline -> BE -> FE
+BACKEND_NOTIFICATION_PUSH_URL=http://localhost:8000/api/v1/internal/notifications/push
+BACKEND_INTERNAL_SECRET=change_me
 ```
 
 Không commit file `.env`.
@@ -300,6 +333,8 @@ Pipeline sẽ làm:
 ```txt
 crawl arXiv
 -> insert paper mới
+-> tạo notification gộp theo topic
+-> gọi BE internal webhook nếu có notification mới
 -> check duplicate cho paper mới
 -> summarize paper chưa có summary
 ```
@@ -357,7 +392,7 @@ python run_hourly_pipeline.py --interval-hours 1 --no-run-immediately
 --run-once                 Chạy một lần rồi thoát
 --interval-hours 1         Khoảng cách giữa các lần chạy
 --crawler-max-results 10   Số paper tối đa lấy cho mỗi topic
---crawler-sleep-seconds 10 Nghỉ giữa các topic để tránh arXiv rate limit
+--crawler-sleep-seconds 3  Nghỉ giữa các topic để tránh arXiv rate limit
 --summary-batch-size 20    Số paper tối đa được tóm tắt mỗi lần chạy
 --duplicate-threshold 0.75 Ngưỡng nhận diện trùng/gần giống
 --duplicate-limit 5        Số paper match tối đa trả về cho mỗi paper mới
@@ -367,7 +402,7 @@ python run_hourly_pipeline.py --interval-hours 1 --no-run-immediately
 Ví dụ chạy mỗi 2 giờ, mỗi topic lấy 5 paper, tóm tắt tối đa 10 paper:
 
 ```powershell
-python run_hourly_pipeline.py --interval-hours 2 --crawler-max-results 5 --summary-batch-size 10
+python run_hourly_pipeline.py --interval-hours 2 --crawler-max-results 5 --crawler-sleep-seconds 3 --summary-batch-size 10
 ```
 
 ### 5.1.3. Test arXiv API Không Ghi DB - For Testing
@@ -540,23 +575,31 @@ Mật khẩu mẫu trong script:
 password123
 ```
 
-### 5.2.5. Ghi Chú Về Các Bảng Planned
+### 5.2.5. Ghi Chú Về Các Bảng Advanced
 
-Pipeline hiện tại ghi vào:
+Pipeline hiện tại đã ghi/cập nhật vào:
 
 ```txt
 topics
 papers
 papers.summary
+papers.avg_rating
 ```
 
-Pipeline chưa ghi vào:
+Schema DB hiện đã có nhưng pipeline/BE chưa khai thác đầy đủ:
 
 ```txt
+related_papers
 matching_papers
 notifications
+user_notifications
+user_paper_interactions
+topics.trending
 ```
 
-Khi nhóm bổ sung bảng `matching_papers`, có thể mở rộng bước duplicate checker để lưu các cặp paper trùng/gần giống vào DB.
+Ghi chú trạng thái:
 
-Khi nhóm bổ sung bảng `notifications`, có thể tạo thông báo sau khi crawler insert paper mới.
+- `matching_papers` đã có schema, nhưng duplicate checker hiện mới trả/log kết quả, chưa lưu match vào DB.
+- `notifications` và `user_notifications` đã có schema; pipeline hiện tạo notification dạng gộp theo topic khi crawler insert paper mới.
+- `user_paper_interactions` đã có schema cho reading history/rating/notes, nhưng Backend Express chưa có API history/rating.
+- `topics.trending` đã có cột, nhưng pipeline chưa có bước tính/lưu xu hướng topic.

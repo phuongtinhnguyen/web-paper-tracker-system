@@ -1,11 +1,14 @@
 from pathlib import Path
 import argparse
+from collections import defaultdict
 import logging
+import os
 import sys
-from sqlalchemy import func
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from dotenv import load_dotenv
+import requests
+from sqlalchemy import func
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -20,7 +23,14 @@ load_dotenv(AI_DIR / ".env")
 
 from crawler.crawler_DB import run_crawler  # noqa: E402
 from database import SessionLocal  # noqa: E402
-from models import Paper, UserPaperInteraction  # noqa: E402
+from models import (  # noqa: E402
+    Notification,
+    Paper,
+    Topic,
+    UserNotification,
+    UserPaperInteraction,
+    user_topics_table,
+)
 from paper_ai import check_duplicate, summarize_pending_papers  # noqa: E402
 
 
@@ -31,13 +41,21 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def empty_notification_result() -> dict:
+    return {
+        "notification_count": 0,
+        "delivery_count": 0,
+        "notification_ids": [],
+    }
+
+
 def check_duplicates_for_new_papers(
     new_papers: list[dict],
     threshold: float,
     limit: int,
 ) -> list[dict]:
     if not new_papers:
-        logger.info("[PIPELINE] Skip duplicate check: no new papers.")
+        logger.info("[PIPELINE] Bo qua kiem tra trung: khong co paper moi.")
         return []
 
     db = SessionLocal()
@@ -67,7 +85,7 @@ def check_duplicates_for_new_papers(
 
             if result["is_duplicate"]:
                 logger.info(
-                    "[PIPELINE] Paper %s has %s duplicate/near-duplicate matches.",
+                    "[PIPELINE] Paper %s co %s paper trung hoac gan giong.",
                     paper.id,
                     result["match_count"],
                 )
@@ -85,38 +103,180 @@ def summarize_pending(batch_size: int) -> int:
     finally:
         db.close()
 
+
+def create_new_paper_notifications(new_papers: list[dict]) -> dict:
+    if not new_papers:
+        logger.info("[PIPELINE] Bo qua tao thong bao: khong co paper moi.")
+        return empty_notification_result()
+
+    papers_by_topic: dict[int, list[dict]] = defaultdict(list)
+
+    for paper in new_papers:
+        topic_id = paper.get("topic_id")
+        if topic_id:
+            papers_by_topic[topic_id].append(paper)
+
+    if not papers_by_topic:
+        logger.info("[PIPELINE] Bo qua tao thong bao: paper moi khong co topic.")
+        return empty_notification_result()
+
+    db = SessionLocal()
+    notification_count = 0
+    delivery_count = 0
+    notification_ids = []
+
+    try:
+        for topic_id, topic_papers in papers_by_topic.items():
+            topic = db.query(Topic).filter(Topic.id == topic_id).first()
+
+            if not topic:
+                logger.info(
+                    "[PIPELINE] Bo qua thong bao: khong tim thay topic %s.",
+                    topic_id,
+                )
+                continue
+
+            follower_rows = (
+                db.query(user_topics_table.c.user_id)
+                .filter(user_topics_table.c.topic_id == topic_id)
+                .all()
+            )
+            follower_ids = [row[0] for row in follower_rows]
+
+            if not follower_ids:
+                logger.info(
+                    "[PIPELINE] Bo qua thong bao cho topic '%s': chua co user theo doi.",
+                    topic.name,
+                )
+                continue
+
+            paper_count = len(topic_papers)
+            first_paper = topic_papers[0]
+
+            if paper_count == 1:
+                message = (
+                    f"Co 1 paper moi trong chu de {topic.name}: "
+                    f"{first_paper['title']}"
+                )
+            else:
+                message = f"Co {paper_count} paper moi trong chu de {topic.name}"
+
+            notification = Notification(
+                type="NEW_PAPER",
+                title="Co paper moi",
+                message=message,
+                paper_id=first_paper["id"],
+            )
+            db.add(notification)
+            db.flush()
+            notification_ids.append(notification.notification_id)
+
+            for user_id in follower_ids:
+                db.add(
+                    UserNotification(
+                        user_id=user_id,
+                        notification_id=notification.notification_id,
+                        is_read=False,
+                    )
+                )
+
+            notification_count += 1
+            delivery_count += len(follower_ids)
+
+        db.commit()
+        logger.info(
+            "[PIPELINE] Da tao %s thong bao theo topic va gui cho %s user.",
+            notification_count,
+            delivery_count,
+        )
+        return {
+            "notification_count": notification_count,
+            "delivery_count": delivery_count,
+            "notification_ids": notification_ids,
+        }
+
+    except Exception as error:
+        db.rollback()
+        logger.error("[PIPELINE] Loi khi tao thong bao: %s", error)
+        return empty_notification_result()
+    finally:
+        db.close()
+
+
+def notify_backend_new_notifications(notification_ids: list[int]) -> bool:
+    if not notification_ids:
+        logger.info("[PIPELINE] Bo qua gui thong bao len BE: khong co notification id.")
+        return False
+
+    push_url = (
+        os.getenv("BACKEND_NOTIFICATION_PUSH_URL")
+        or os.getenv("BACKEND_INTERNAL_URL")
+    )
+
+    if not push_url:
+        logger.info("[PIPELINE] Bo qua gui thong bao len BE: chua cau hinh push URL.")
+        return False
+
+    secret = os.getenv("BACKEND_INTERNAL_SECRET")
+    headers = {}
+
+    if secret:
+        headers["x-internal-api-secret"] = secret
+
+    payload = {
+        "event": "NEW_NOTIFICATION",
+        "notification_ids": notification_ids,
+        "notification_count": len(notification_ids),
+    }
+
+    try:
+        response = requests.post(
+            push_url,
+            json=payload,
+            headers=headers,
+            timeout=10,
+        )
+        response.raise_for_status()
+        logger.info(
+            "[PIPELINE] Da gui %s thong bao len Backend.",
+            len(notification_ids),
+        )
+        return True
+    except requests.RequestException as error:
+        logger.warning("[PIPELINE] Loi khi gui thong bao len Backend: %s", error)
+        return False
+
+
 def update_average_ratings() -> int:
-    logger.info("[PIPELINE] Start calculating average ratings...")
+    logger.info("[PIPELINE] Bat dau tinh diem trung binh.")
     db = SessionLocal()
     update_count = 0
 
     try:
-        # 1. Dùng func.avg để tính điểm trung bình, nhóm theo từng bài báo (group_by)
-        # Chỉ lấy những đánh giá có điểm (rating is not None)
         rating_results = db.query(
             UserPaperInteraction.paper_id,
-            func.avg(UserPaperInteraction.rating).label('avg_score')
+            func.avg(UserPaperInteraction.rating).label("avg_score"),
         ).filter(
             UserPaperInteraction.rating.isnot(None)
         ).group_by(UserPaperInteraction.paper_id).all()
 
-        # 2. Cập nhật kết quả vào bảng Paper
         for paper_id, avg_score in rating_results:
             db.query(Paper).filter(Paper.id == paper_id).update(
-                {"avg_rating": round(avg_score, 1)} # Làm tròn 1 chữ số thập phân (VD: 4.5)
+                {"avg_rating": round(avg_score, 1)}
             )
             update_count += 1
-            
-        db.commit() # Chốt lưu toàn bộ thay đổi
-        logger.info("[PIPELINE] Successfully updated average ratings for %s papers.", update_count)
+
+        db.commit()
+        logger.info("[PIPELINE] Da cap nhat diem trung binh cho %s paper.", update_count)
         return update_count
 
-    except Exception as e:
+    except Exception as error:
         db.rollback()
-        logger.error("[PIPELINE] Failed to update average ratings: %s", e)
+        logger.error("[PIPELINE] Loi khi cap nhat diem trung binh: %s", error)
         return 0
     finally:
         db.close()
+
 
 def run_pipeline(
     crawler_max_results: int,
@@ -126,7 +286,7 @@ def run_pipeline(
     duplicate_limit: int,
     skip_summary: bool,
 ) -> dict:
-    logger.info("[PIPELINE] Start crawler + duplicate check + summary job.")
+    logger.info("[PIPELINE] Bat dau pipeline: crawler + kiem tra trung + summary.")
 
     crawler_result = run_crawler(
         max_results_per_topic=crawler_max_results,
@@ -134,13 +294,23 @@ def run_pipeline(
     )
 
     if not crawler_result["success"]:
-        logger.error("[PIPELINE] Crawler failed: %s", crawler_result.get("error"))
+        logger.error("[PIPELINE] Crawler bi loi: %s", crawler_result.get("error"))
         return {
             "success": False,
             "crawler": crawler_result,
             "duplicate_results": [],
             "summarized_count": 0,
+            "notification_count": 0,
+            "notification_push_sent": False,
         }
+
+    notification_result = create_new_paper_notifications(
+        crawler_result["new_papers"]
+    )
+    notification_count = notification_result["notification_count"]
+    notification_push_sent = notify_backend_new_notifications(
+        notification_result["notification_ids"]
+    )
 
     duplicate_results = check_duplicates_for_new_papers(
         new_papers=crawler_result["new_papers"],
@@ -149,16 +319,17 @@ def run_pipeline(
     )
 
     if skip_summary:
-        logger.info("[PIPELINE] Skip summary step.")
+        logger.info("[PIPELINE] Bo qua buoc summary.")
         summarized_count = 0
     else:
         summarized_count = summarize_pending(summary_batch_size)
 
     logger.info(
-        "[PIPELINE] Done. Fetched: %s, inserted: %s, skipped existing: %s, duplicate checks: %s, summarized: %s.",
+        "[PIPELINE] Hoan thanh. Da lay: %s, da them: %s, bo qua do da ton tai: %s, thong bao: %s, kiem tra trung: %s, da summary: %s.",
         crawler_result["fetched_paper_count"],
         crawler_result["new_paper_count"],
         crawler_result["skipped_existing_count"],
+        notification_count,
         len(duplicate_results),
         summarized_count,
     )
@@ -168,66 +339,68 @@ def run_pipeline(
     return {
         "success": True,
         "crawler": crawler_result,
+        "notification_count": notification_count,
+        "notification_push_sent": notification_push_sent,
         "duplicate_results": duplicate_results,
         "summarized_count": summarized_count,
-        "updated_ratings_count": updated_ratings_count
+        "updated_ratings_count": updated_ratings_count,
     }
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run crawler, duplicate checker, and AI summary on a schedule."
+        description="Chay crawler, kiem tra trung va AI summary theo lich."
     )
     parser.add_argument(
         "--run-once",
         action="store_true",
-        help="Run the pipeline once and exit.",
+        help="Chay pipeline mot lan roi thoat.",
     )
     parser.add_argument(
         "--interval-hours",
         type=float,
         default=1,
-        help="Scheduler interval in hours. Default: 1.",
+        help="Chu ky scheduler theo gio. Mac dinh: 1.",
     )
     parser.add_argument(
         "--no-run-immediately",
         action="store_true",
-        help="Start scheduler without running the first job immediately.",
+        help="Khoi dong scheduler nhung khong chay job dau tien ngay lap tuc.",
     )
     parser.add_argument(
         "--crawler-max-results",
         type=int,
         default=10,
-        help="Maximum arXiv results per topic for each crawler run.",
+        help="So ket qua arXiv toi da cho moi topic trong moi lan crawler.",
     )
     parser.add_argument(
         "--crawler-sleep-seconds",
         type=int,
-        default=10,
-        help="Delay between topics to avoid arXiv rate limit.",
+        default=3,
+        help="So giay nghi giua cac topic de tranh rate limit arXiv. Mac dinh: 3.",
     )
     parser.add_argument(
         "--summary-batch-size",
         type=int,
         default=20,
-        help="Maximum pending papers to summarize per pipeline run.",
+        help="So paper chua co summary toi da duoc xu ly moi lan pipeline.",
     )
     parser.add_argument(
         "--duplicate-threshold",
         type=float,
         default=0.75,
-        help="Similarity threshold from 0 to 1. Default: 0.75.",
+        help="Nguong do tuong dong tu 0 den 1. Mac dinh: 0.75.",
     )
     parser.add_argument(
         "--duplicate-limit",
         type=int,
         default=5,
-        help="Maximum duplicate/near-duplicate matches per new paper.",
+        help="So paper trung hoac gan giong toi da cho moi paper moi.",
     )
     parser.add_argument(
         "--skip-summary",
         action="store_true",
-        help="Skip Groq summary step. Useful when testing crawler only.",
+        help="Bo qua buoc Groq summary, dung khi chi test crawler.",
     )
     return parser
 
@@ -264,7 +437,7 @@ def main():
         run_pipeline(**job_kwargs)
 
     logger.info(
-        "[PIPELINE] Scheduler started. Interval: every %s hour(s).",
+        "[PIPELINE] Scheduler da chay. Chu ky: moi %s gio.",
         args.interval_hours,
     )
     scheduler.start()

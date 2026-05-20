@@ -197,7 +197,8 @@ backend/
 |   |   |-- papers/          # planned core
 |   |   |-- favorites/       # planned core
 |   |   |-- search/          # planned core
-|   |   |-- notifications/   # future/later
+|   |   |-- notifications/   # implemented
+|   |   |-- internal/        # internal webhook APIs
 |   |   |-- stats/           # advanced
 |   |   |-- ratings/         # advanced
 |   |
@@ -267,6 +268,7 @@ DATABASE_URL=postgresql://<username>:<password>@<host>/<dbname>?sslmode=require
 JWT_SECRET=change_me
 JWT_EXPIRES_IN=7d
 AI_SERVICE_URL=http://localhost:8001
+INTERNAL_API_SECRET=change_me
 ARXIV_MAX_RESULTS=20
 CRAWLER_CRON=*/60 * * * *
 ```
@@ -280,6 +282,7 @@ DATABASE_URL=
 JWT_SECRET=
 JWT_EXPIRES_IN=
 AI_SERVICE_URL=
+INTERNAL_API_SECRET=
 ARXIV_MAX_RESULTS=
 CRAWLER_CRON=
 ```
@@ -683,13 +686,13 @@ papers
 favorites
 ```
 
-Schema nghiệp vụ hiện tại:
+Schema nghiệp vụ core hiện tại:
 
 ```txt
 users(id, email, hashed_password, full_name, created_at)
-topics(id, name)
+topics(id, name, trending)
 user_topics(user_id, topic_id)
-papers(id, arxiv_id, title, abstract, summary, authors, published_date, pdf_url, created_at, topic_id)
+papers(id, arxiv_id, title, abstract, summary, authors, published_date, pdf_url, avg_rating, created_at, topic_id)
 favorites(user_id, paper_id, added_at)
 ```
 
@@ -699,19 +702,14 @@ Ghi chú:
 - `papers.topic_id` đã có trong DB hiện tại và liên kết tới `topics.id`.
 - `user_topics` và `favorites` là bảng quan hệ nhiều-nhiều, dùng khóa chính ghép.
 
-Các bảng cần bổ sung cho feature nâng cao:
+Schema advanced đã có trong DB. Backend Express đã implement notification APIs, nhưng các API advanced còn lại chưa implement đủ:
 
 ```txt
-related_papers
-matching_papers
-paper_ratings
-```
-
-Cột/bảng planned khác:
-
-```txt
-topics.trending
-notifications - thực hiện sau, DB hiện tại chưa có bảng này
+related_papers(paper_id, related_paper_id)
+matching_papers(paper_id, matching_paper_id, similarity_score, match_type, created_at)
+user_paper_interactions(user_id, paper_id, is_read, rating, notes, created_at, updated_at)
+notifications(notification_id, type, title, message, paper_id, created_at)
+user_notifications(user_id, notification_id, is_read, read_at)
 ```
 
 ## Important Field Mapping
@@ -839,14 +837,20 @@ Return access_token + username
 | Favorites | GET | `/api/v1/favorites` | Lấy danh sách paper yêu thích | Implemented |
 | Favorites | POST | `/api/v1/papers/favorite/:id` | Lưu paper yêu thích | Implemented |
 | Favorites | DELETE | `/api/v1/papers/favorite/:id` | Bỏ lưu paper yêu thích | Implemented |
+| History | GET | `/api/v1/history?page=1&limit=5` | Lấy lịch sử đọc từ `user_paper_interactions`; FE đang gọi | Planned Core/FE calling |
+| History | DELETE | `/api/v1/history/:paperId` | Xóa một mục lịch sử đọc; FE đang gọi | Planned Core/FE calling |
+| History | DELETE | `/api/v1/history` | Xóa toàn bộ lịch sử đọc; FE đang gọi | Planned Core/FE calling |
 | Crawler | POST | `/api/v1/crawler/run` | Trigger crawler thủ công cho dev/admin | Planned Core/Internal |
-| Related | GET | `/api/v1/papers/:id/related?limit=5` | Lấy paper liên quan từ bảng planned `related_papers` | Advanced |
-| Duplicate | GET | `/api/v1/papers/:id/matches?limit=5` | Lấy paper trùng/gần giống từ bảng planned `matching_papers` | Advanced |
-| Notifications | GET | `/api/v1/notifications` | Lấy danh sách thông báo - thực hiện sau khi có bảng `notifications` | Future/Later |
-| Notifications | PATCH | `/api/v1/notifications/:id/read` | Đánh dấu thông báo đã đọc - thực hiện sau khi có bảng `notifications` | Future/Later |
-| Stats | GET | `/api/v1/stats/topics/trends` | Lấy topic xu hướng từ cột planned `topics.trending` | Advanced |
-| Ratings | POST | `/api/v1/papers/:id/rating` | Lưu điểm vào bảng planned `paper_ratings` | Advanced |
-| Ratings | GET | `/api/v1/papers/:id/rating/me` | Lấy điểm từ bảng planned `paper_ratings` | Advanced |
+| Related | GET | `/api/v1/papers/:id/related?limit=5` | Lấy paper liên quan từ `related_papers`; FE đang gọi | Planned Core/FE calling |
+| Duplicate | GET | `/api/v1/papers/:id/matches?limit=5` | Lấy paper trùng/gần giống từ `matching_papers`; FE đang gọi | Advanced/FE calling |
+| Notifications | GET | `/api/v1/notifications` | Lấy danh sách thông báo từ `notifications` + `user_notifications`; FE đang gọi | Implemented |
+| Notifications | GET | `/api/v1/notifications/stream` | SSE stream nhận notification realtime | Implemented |
+| Notifications | PATCH | `/api/v1/notifications/:id/read` | Đánh dấu một thông báo đã đọc; FE đang gọi | Implemented |
+| Notifications | PATCH | `/api/v1/notifications/read-all` | Đánh dấu tất cả thông báo đã đọc; FE đang gọi | Implemented |
+| Internal | POST | `/api/v1/internal/notifications/push` | DB pipeline báo BE đẩy notification qua SSE | Implemented/Internal |
+| Stats | GET | `/api/v1/stats/topics/trends` | Lấy topic xu hướng từ `topics.trending`; FE đang gọi | Advanced/FE calling |
+| Ratings | POST | `/api/v1/papers/:id/rating` | Lưu điểm vào `user_paper_interactions.rating`; FE đang gọi | Advanced/FE calling |
+| Ratings | GET | `/api/v1/papers/:id/rating/me` | Lấy điểm từ `user_paper_interactions`; FE đang gọi | Advanced/FE calling |
 
 ---
 
@@ -864,7 +868,7 @@ Return access_token + username
 Implemented - đã có code trong backend hiện tại
 Planned     - chưa có code backend hoàn chỉnh, chưa mặc định là đã chạy được
 Advanced    - tính năng nâng cao, làm sau core flow
-Future/Later - để sau, DB hiện chưa có bảng/cột tương ứng
+Future/Later - để sau, có thể đã có schema DB nhưng chưa có API hoặc chưa có flow tạo dữ liệu
 ```
 
 Tất cả response nên giữ format chung:
@@ -1575,7 +1579,7 @@ Dữ liệu trả về mẫu khi DB đã có summary:
 
 ---
 
-## 9.8 Favorite APIs - Planned Core
+## 9.8 Favorite APIs - Implemented
 
 Tất cả Favorite APIs cần Bearer token.
 
@@ -1715,7 +1719,7 @@ Ghi chú:
 
 Lấy danh sách paper liên quan, giới hạn số lượng bằng `limit`.
 
-DB planned:
+DB hiện có:
 
 ```txt
 related_papers
@@ -1761,15 +1765,18 @@ Dữ liệu trả về mẫu:
 
 Lấy danh sách paper trùng hoặc gần giống của một paper.
 
-DB planned:
+DB hiện có:
 
 ```txt
 matching_papers
 |-- paper_id
-|-- related_paper_id
+|-- matching_paper_id
+|-- similarity_score
+|-- match_type
+|-- created_at
 ```
 
-Python duplicate detection sẽ tạo dữ liệu vào `matching_papers`. Backend đọc bảng này và join sang `papers` để trả tên/id các paper trùng hoặc gần giống.
+Python duplicate detection hiện mới trả/log kết quả. Bước lưu dữ liệu vào `matching_papers` và Backend API đọc bảng này vẫn chưa implement.
 
 Cách gửi:
 
@@ -1799,13 +1806,15 @@ Dữ liệu trả về mẫu:
 
 ---
 
-## 9.12 Notification APIs - Future/Later
+## 9.12 Notification APIs - Implemented
 
 Ghi chú DB:
 
-- DB hiện tại chưa có bảng `notifications`.
-- Phần thông báo sẽ thực hiện sau, khi thống nhất schema notification hoặc cơ chế event từ DB/crawler sang BE/FE.
-- Trước mắt DB/crawler có thể cào data theo giờ; event/thông báo cho FE/BE là hạng mục sau.
+- DB hiện đã có bảng `notifications` và `user_notifications`.
+- FE hiện đã gắn `NotificationBell` và gọi notification APIs.
+- Backend Express đã có route/controller/service/repository cho notification.
+- Database pipeline đã tạo notification dạng gộp theo topic khi crawler insert paper mới.
+- Pipeline gọi internal webhook của Backend; Backend đẩy notification realtime xuống FE qua SSE.
 
 ### 9.12.1 GET /api/v1/notifications
 
@@ -1814,8 +1823,16 @@ Lấy danh sách thông báo của user đang login.
 Cách gửi:
 
 ```http
-GET /api/v1/notifications
+GET /api/v1/notifications?page=1&limit=10&unread_only=false
 Authorization: Bearer <access_token>
+```
+
+Query params:
+
+```txt
+page        optional, default 1
+limit       optional, default 10, max 50
+unread_only optional, true/false, default false
 ```
 
 Dữ liệu trả về mẫu:
@@ -1823,23 +1840,52 @@ Dữ liệu trả về mẫu:
 ```json
 {
   "success": true,
-  "message": "OK",
-  "data": {
-    "unread_count": 1,
-    "notifications": [
-      {
-        "id": 1,
-        "title": "Có paper mới",
-        "message": "Có 3 paper mới trong chủ đề Machine Learning",
-        "is_read": false,
-        "created_at": "2026-05-15T00:00:00.000Z"
+  "message": "Get notifications successfully",
+  "data": [
+    {
+      "id": 1,
+      "notification_id": 1,
+      "type": "NEW_PAPER",
+      "title": "Có paper mới",
+      "message": "Có 3 paper mới trong chủ đề Machine Learning",
+      "paper_id": 12,
+      "is_read": false,
+      "read_at": null,
+      "created_at": "2026-05-15T00:00:00.000Z",
+      "paper": {
+        "id": 12,
+        "title": "Example Paper",
+        "pdf_url": "https://arxiv.org/abs/2605.00001"
       }
-    ]
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 1,
+    "total_pages": 1
   }
 }
 ```
 
-### 9.12.2 PATCH /api/v1/notifications/:id/read
+### 9.12.2 GET /api/v1/notifications/stream
+
+Mở kết nối SSE để FE nhận notification realtime. Vì `EventSource` không gửi được `Authorization` header, FE truyền token qua query `token`.
+
+Cách gửi:
+
+```http
+GET /api/v1/notifications/stream?token=<access_token>
+```
+
+Event trả về mẫu:
+
+```txt
+event: notification
+data: {"type":"NEW_NOTIFICATION","notification":{"id":1,"notification_id":1,"type":"NEW_PAPER","title":"Có paper mới","message":"Có 3 paper mới trong chủ đề Machine Learning","paper_id":12,"is_read":false,"read_at":null,"created_at":"2026-05-15T00:00:00.000Z","paper":{"id":12,"title":"Example Paper","pdf_url":"https://arxiv.org/abs/2605.00001"}}}
+```
+
+### 9.12.3 PATCH /api/v1/notifications/:id/read
 
 Đánh dấu một thông báo là đã đọc.
 
@@ -1855,10 +1901,67 @@ Dữ liệu trả về mẫu:
 ```json
 {
   "success": true,
-  "message": "Notification marked as read",
+  "message": "Mark notification read successfully",
   "data": {
     "notification_id": 1,
-    "is_read": true
+    "is_read": true,
+    "read_at": "2026-05-15T00:05:00.000Z"
+  }
+}
+```
+
+### 9.12.4 PATCH /api/v1/notifications/read-all
+
+Đánh dấu tất cả thông báo của user đang login là đã đọc.
+
+Cách gửi:
+
+```http
+PATCH /api/v1/notifications/read-all
+Authorization: Bearer <access_token>
+```
+
+Dữ liệu trả về mẫu:
+
+```json
+{
+  "success": true,
+  "message": "Mark all notifications read successfully",
+  "data": {
+    "updated_count": 3
+  }
+}
+```
+
+### 9.12.5 POST /api/v1/internal/notifications/push
+
+Endpoint nội bộ cho Database pipeline. Sau khi tạo notification mới, pipeline gửi danh sách `notification_ids` lên endpoint này. Backend query DB và push event SSE xuống các user đang online.
+
+Cách gửi:
+
+```http
+POST /api/v1/internal/notifications/push
+x-internal-api-secret: <internal_api_secret>
+Content-Type: application/json
+
+{
+  "event": "NEW_NOTIFICATION",
+  "notification_ids": [1, 2],
+  "notification_count": 2
+}
+```
+
+Dữ liệu trả về mẫu:
+
+```json
+{
+  "success": true,
+  "message": "Push notifications successfully",
+  "data": {
+    "notification_count": 2,
+    "delivery_count": 3,
+    "online_user_count": 1,
+    "sent_count": 1
   }
 }
 ```
@@ -1871,7 +1974,7 @@ Dữ liệu trả về mẫu:
 
 Lấy danh sách topic xu hướng.
 
-DB planned:
+DB hiện có:
 
 ```txt
 topics.trending
@@ -1908,13 +2011,17 @@ Dữ liệu trả về mẫu:
 
 ## 9.14 Rating APIs - Advanced
 
-DB planned:
+DB hiện có:
 
 ```txt
-paper_ratings
+user_paper_interactions
 |-- user_id
 |-- paper_id
+|-- is_read
 |-- rating
+|-- notes
+|-- created_at
+|-- updated_at
 ```
 
 ### 9.14.1 POST /api/v1/papers/:id/rating

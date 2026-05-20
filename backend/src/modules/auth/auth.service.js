@@ -86,8 +86,53 @@ async function getMe(userId) {
   };
 }
 
+async function updateProfile(userId, { username }) {
+  const user = await authRepository.findUserById(userId);
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  const updatedUser = await authRepository.updateUser(userId, {
+    username,
+    email: user.email,
+  });
+
+  return {
+    user: {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      username: updatedUser.full_name,
+      created_at: updatedUser.created_at,
+    },
+  };
+}
+
+async function changePassword(userId, { currentPassword, newPassword }) {
+  const user = await authRepository.findUserById(userId);
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  // Need hashed_password from DB — fetch with it
+  const userWithPassword = await authRepository.findUserByEmail(user.email);
+
+  const isPasswordValid = await bcrypt.compare(currentPassword, userWithPassword.hashed_password);
+  if (!isPasswordValid) {
+    throw new AppError("Current password is incorrect", 401);
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  await authRepository.updatePassword(userId, hashedPassword);
+
+  return { message: "Password changed successfully" };
+}
+
 module.exports = {
   register,
   login,
   getMe,
+  updateProfile,
+  changePassword,
 };

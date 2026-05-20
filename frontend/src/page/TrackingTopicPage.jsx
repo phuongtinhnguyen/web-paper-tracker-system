@@ -8,9 +8,8 @@ import {
   getTrackedTopics,
   trackTopic,
   untrackTopic,
-  addFavorite,
-  removeFavorite,
 } from "../services/API";
+import { useFavorites } from "../contexts/FavoritesContext";
 
 function extractTopics(response) {
   return response.data?.data?.topics ?? response.data?.topics ?? response.data ?? [];
@@ -21,7 +20,7 @@ export default function TrackingTopics() {
 
   const [allTopics, setAllTopics] = useState([]);
   const [followedTopics, setFollowedTopics] = useState([]);
-  const [favorites, setFavorites] = useState(new Set());
+  const { favoriteIds, toggleFavorite } = useFavorites();
 
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [papers, setPapers] = useState([]);
@@ -94,30 +93,6 @@ export default function TrackingTopics() {
 
     fetchPapers();
   }, [selectedTopic, currentPage]);
-
-  const toggleFavorite = async (paper) => {
-    const paperId = paper.id;
-    const isFav = favorites.has(paperId);
-
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      if (isFav) next.delete(paperId);
-      else next.add(paperId);
-      return next;
-    });
-
-    try {
-      if (isFav) await removeFavorite(paperId);
-      else await addFavorite(paperId);
-    } catch {
-      setFavorites((prev) => {
-        const next = new Set(prev);
-        if (isFav) next.add(paperId);
-        else next.delete(paperId);
-        return next;
-      });
-    }
-  };
 
   const handleTopicSelect = (topic) => {
     setSelectedTopic(topic);
@@ -234,8 +209,8 @@ export default function TrackingTopics() {
                 <PaperCard
                   key={p.id}
                   paper={p}
-                  isFavorite={favorites.has(p.id)}
-                  onToggleFavorite={() => toggleFavorite(p)}
+                  isFavorite={favoriteIds.has(p.id)}
+                  onToggleFavorite={() => toggleFavorite(p.id)}
                 />
               ))}
             </div>

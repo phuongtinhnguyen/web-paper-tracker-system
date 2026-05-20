@@ -25,6 +25,19 @@ export const login = (email, password) =>
 export const register = (username, email, password) =>
   api.post("/auth/register", { username, email, password });
 
+
+/** GET /auth/me  → { username, email } */
+export const getProfile = () =>
+  api.get("/auth/me");
+
+/** PUT /auth/profile  → { username } */
+export const updateProfile = (username) =>
+  api.put("/auth/profile", { username });
+
+/** PUT /auth/change-password  → { message } */
+export const changePassword = (currentPassword, newPassword) =>
+  api.put("/auth/change-password", { currentPassword, newPassword });
+
 /** POST /auth/forgot-password  → { message } */
 export const forgotPassword = (email) =>
   api.post("/auth/forgot-password", { email });
@@ -104,5 +117,40 @@ export const trackTopic = (topicId) =>
 /** DELETE /user-topics/:topicId  → { topic_id } */
 export const untrackTopic = (topicId) =>
   api.delete(`/user-topics/${topicId}`);
+/** GET /papers/:id/related?limit=5  -> { paper_id, related_papers } */
+export const getRelatedPapers = (paperId, params = { limit: 5 }) =>
+  api.get(`/papers/${paperId}/related`, { params });
+
+/** GET /papers/:id/matches?limit=5  -> { paper_id, matches: Paper[] } */
+export const getMatchingPapers = (paperId, params = { limit: 5 }) =>
+  api.get(`/papers/${paperId}/matches`, { params });
+
+/** POST /papers/:id/rating  -> { paper_id, rating } */
+export const submitRating = (paperId, rating) =>
+  api.post(`/papers/${paperId}/rating`, { rating });
+
+/** GET /papers/:id/rating/me  -> { paper_id, rating } */
+export const getMyRating = (paperId) =>
+  api.get(`/papers/${paperId}/rating/me`);
+
+// ── STATS / TRENDS ────────────────────────────────────────────────────────────
+
+/** GET /stats/topics/trends  -> { data: Topic[] } */
+export const getTrendingTopics = () =>
+  api.get("/stats/topics/trends");
+
+// ── NOTIFICATIONS ─────────────────────────────────────────────────────────────
+
+/** GET /notifications  -> { data: Notification[] } */
+export const getNotifications = (params = {}) =>
+  api.get("/notifications", { params });
+
+/** PATCH /notifications/:id/read  -> { notification_id, is_read } */
+export const markNotificationRead = (id) =>
+  api.patch(`/notifications/${id}/read`);
+
+/** PATCH /notifications/read-all  -> { message } */
+export const markAllNotificationsRead = () =>
+  api.patch("/notifications/read-all");
 
 export default api;

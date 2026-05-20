@@ -37,6 +37,9 @@ const LoginPage = () => {
       const displayName = username || user?.username || "Người dùng";
       localStorage.setItem("username", displayName);
 
+      // Dispatch event để FavoritesContext và các component khác biết auth đã thay đổi
+      window.dispatchEvent(new Event("auth-change"));
+
       // 1. Hiển thị thông báo THÀNH CÔNG
       setModalConfig({
         isOpen: true,

@@ -822,6 +822,8 @@ Return access_token + username
 | Auth | POST | `/api/v1/auth/register` | Đăng ký tài khoản | Implemented |
 | Auth | POST | `/api/v1/auth/login` | Đăng nhập và lấy access token | Implemented |
 | Auth | GET | `/api/v1/auth/me` | Lấy thông tin user từ token | Implemented |
+| Auth | PUT | `/api/v1/auth/profile` | Cập nhật username/profile user đang login | Implemented |
+| Auth | PUT | `/api/v1/auth/change-password` | Đổi mật khẩu user đang login | Implemented |
 | Topics | GET | `/api/v1/topics` | Lấy tất cả chủ đề có trong database từ bảng `topics` | Implemented |
 | User Topics | GET | `/api/v1/user-topics` | Lấy danh sách chủ đề user đang theo dõi từ bảng `user_topics` | Implemented |
 | User Topics | POST | `/api/v1/user-topics` | Theo dõi một chủ đề có sẵn bằng `topic_id` | Implemented |
@@ -1029,6 +1031,79 @@ Dữ liệu trả về mẫu:
   }
 }
 ```
+
+### 9.5.4 PUT /api/v1/auth/profile
+
+Cập nhật username/profile của user đang login. API này chỉ cập nhật `username`, backend lưu vào DB field `users.full_name`.
+
+Cách gửi:
+
+```http
+PUT /api/v1/auth/profile
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "username": "New User Name"
+}
+```
+
+Dữ liệu trả về mẫu:
+
+```json
+{
+  "success": true,
+  "message": "Profile updated successfully",
+  "data": {
+    "user": {
+      "id": 1,
+      "email": "test@gmail.com",
+      "username": "New User Name",
+      "created_at": "2026-05-15T00:00:00.000Z"
+    }
+  }
+}
+```
+
+Validation:
+
+- `username` là bắt buộc.
+- `username` không được là chuỗi rỗng.
+
+### 9.5.5 PUT /api/v1/auth/change-password
+
+Đổi mật khẩu của user đang login. API này yêu cầu gửi đúng mật khẩu hiện tại trước khi đổi sang mật khẩu mới.
+
+Cách gửi:
+
+```http
+PUT /api/v1/auth/change-password
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "currentPassword": "123456",
+  "newPassword": "654321"
+}
+```
+
+Dữ liệu trả về mẫu:
+
+```json
+{
+  "success": true,
+  "message": "Password changed successfully",
+  "data": {
+    "message": "Password changed successfully"
+  }
+}
+```
+
+Validation:
+
+- `currentPassword` là bắt buộc.
+- `newPassword` tối thiểu 6 ký tự.
+- Nếu `currentPassword` không đúng, backend trả lỗi `Current password is incorrect`.
 
 Ghi chú:
 

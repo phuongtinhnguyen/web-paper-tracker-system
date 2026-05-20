@@ -86,6 +86,8 @@ def build_services(args):
             str(args.pipeline_interval_hours),
             "--crawler-max-results",
             str(args.crawler_max_results),
+            "--crawler-sleep-seconds",
+            str(args.crawler_sleep_seconds),
             "--summary-batch-size",
             str(args.summary_batch_size),
         ]
@@ -179,6 +181,7 @@ def parse_args():
     parser.add_argument("--pipeline-interval-hours", type=float, default=1)
     parser.add_argument("--pipeline-run-immediately", action="store_true")
     parser.add_argument("--crawler-max-results", type=int, default=15)
+    parser.add_argument("--crawler-sleep-seconds", type=int, default=3)
     parser.add_argument("--summary-batch-size", type=int, default=20)
     parser.add_argument("--skip-summary", action="store_true")
     return parser.parse_args()

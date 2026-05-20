@@ -1,6 +1,27 @@
 # web-paper-tracker-system
 AI-powered research paper tracking system
 
+## 0. Trạng Thái Hiện Tại
+
+| Module | Trạng thái |
+| --- | --- |
+| Frontend | Đã có auth UI, dashboard, topics, favorites, history page, trend page, paper detail, notifications UI, related/matching/rating UI |
+| Backend | Đã implement core APIs: health, auth, topics, user-topics, papers, search, summary on-demand, favorites, notifications, notification SSE |
+| Database | Đã có schema core/advanced, pipeline tạo notification gộp theo topic và gọi BE webhook để push SSE |
+| AI | Đã có summary batch, summary API service và duplicate checker |
+
+Các API FE đang gọi nhưng Backend Express chưa implement:
+
+```txt
+GET/DELETE /api/v1/history
+GET       /api/v1/papers/:id/related
+GET       /api/v1/papers/:id/matches
+GET/POST  /api/v1/papers/:id/rating...
+GET       /api/v1/stats/topics/trends
+```
+
+Vì vậy nếu demo toàn bộ UI hiện tại, các phần advanced trên có thể trả `404` hoặc hiển thị rỗng cho đến khi BE bổ sung route tương ứng.
+
 ## 1. Start Nhanh Toàn Bộ Hệ Thống
 
 Repo có script `start_all.py` để start nhanh 4 phần chính:
@@ -71,6 +92,7 @@ JWT_EXPIRES_IN=7d
 AI_SERVICE_URL=http://localhost:8001
 ARXIV_MAX_RESULTS=20
 CRAWLER_CRON=*/60 * * * *
+INTERNAL_API_SECRET=change_me_internal_secret
 ```
 
 Ghi chú:
@@ -78,6 +100,7 @@ Ghi chú:
 - `DATABASE_URL` phải trỏ tới cùng database với module `database`.
 - `AI_SERVICE_URL` là URL của AI service, mặc định chạy ở `http://localhost:8001`.
 - `JWT_SECRET` nên là chuỗi dài, khó đoán, không dùng giá trị mẫu khi deploy.
+- `INTERNAL_API_SECRET` phải khớp với `BACKEND_INTERNAL_SECRET` trong `database/.env` nếu dùng realtime notification.
 
 #### 1.2.2. Database `.env`
 
@@ -91,12 +114,15 @@ Nội dung mẫu:
 
 ```env
 DATABASE_URL=postgresql://<username>:<password>@<host>/<dbname>?sslmode=require
+BACKEND_NOTIFICATION_PUSH_URL=http://localhost:8000/api/v1/internal/notifications/push
+BACKEND_INTERNAL_SECRET=change_me_internal_secret
 ```
 
 Ghi chú:
 
 - Đây là connection string dùng cho SQLAlchemy/Alembic, crawler và hourly pipeline.
 - Nên dùng cùng Neon/PostgreSQL database với `backend/.env`.
+- `BACKEND_NOTIFICATION_PUSH_URL` và `BACKEND_INTERNAL_SECRET` dùng để pipeline báo Backend đẩy notification realtime qua SSE sau khi tạo notification mới.
 
 #### 1.2.3. AI `.env`
 
@@ -183,7 +209,7 @@ python start_all.py --skip-summary
 Ví dụ chạy pipeline mỗi 2 giờ, mỗi topic lấy tối đa 5 paper, mỗi batch summary tối đa 10 paper:
 
 ```powershell
-python start_all.py --pipeline-interval-hours 2 --crawler-max-results 5 --summary-batch-size 10
+python start_all.py --pipeline-interval-hours 2 --crawler-max-results 5 --crawler-sleep-seconds 3 --summary-batch-size 10
 ```
 
 ### 1.8. Dừng Toàn Bộ

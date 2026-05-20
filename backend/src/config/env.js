@@ -27,6 +27,7 @@ const env = {
   aiServiceUrl: process.env.AI_SERVICE_URL || "http://localhost:8001",
   arxivMaxResults: Number(process.env.ARXIV_MAX_RESULTS || 20),
   crawlerCron: process.env.CRAWLER_CRON || "*/60 * * * *",
+  internalApiSecret: process.env.INTERNAL_API_SECRET || "",
 };
 
 module.exports = env;

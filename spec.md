@@ -49,7 +49,7 @@ Hệ thống crawl dữ liệu từ arXiv API, lưu thông tin paper vào Postgr
 
 | Module | Kết quả mong đợi khi hoàn thành |
 |---|---|
-| Frontend | React + Vite app có Login/Register, dashboard, topic management, paper list, paper detail, favorites, history, search UI và responsive layout. |
+| Frontend | React + Vite app có Login/Register, dashboard, topic management, paper list, paper detail, favorites, history, trend, notification UI, rating/related/matching UI và responsive layout. |
 | Backend | Node.js + Express.js REST API xử lý authentication, topics, papers, favorites, search và kết nối database. |
 | Database | PostgreSQL/Neon database được quản lý bằng SQLAlchemy models và Alembic migrations. |
 | AI | Python AI module dùng Groq API với model LLaMA 3.3 70B để tóm tắt abstract, batch summarize và kiểm tra trùng bằng Cosine Similarity. |
@@ -168,8 +168,8 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 
 ### Nâng cao - Gửi thong bao khi co paper mới
 
-- [ ] UI notification khi có paper mới
-- [ ] Trạng thái đã đọc thông báo
+- [x] UI notification khi có paper mới
+- [x] Trạng thái đã đọc thông báo
 
 ### Nâng cao - Thong ke xu hưong theo chủ đề
 
@@ -264,18 +264,21 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 
 ### Nâng cao - Gửi thong bao khi co paper mới
 
-- [ ] Service tạo thông báo khi crawler có paper mới - check sau
-- [ ] API lấy danh sách thông báo: `GET /api/v1/notifications` - làm sau khi có bảng `notifications`
-- [ ] API đánh dấu thông báo đã đọc: `PATCH /api/v1/notifications/:id/read` - làm sau khi có bảng `notifications`
+- [x] Database pipeline tạo thông báo dạng gộp theo topic khi crawler có paper mới
+- [x] API lấy danh sách thông báo: `GET /api/v1/notifications` - đọc từ `notifications`/`user_notifications`
+- [x] API SSE stream nhận thông báo realtime: `GET /api/v1/notifications/stream`
+- [x] API nội bộ để DB pipeline báo notification mới cho BE: `POST /api/v1/internal/notifications/push`
+- [x] API đánh dấu thông báo đã đọc: `PATCH /api/v1/notifications/:id/read`
+- [x] API đánh dấu tất cả thông báo đã đọc: `PATCH /api/v1/notifications/read-all`
 
 ### Nâng cao - Thong ke xu hưong theo chủ đề
 
-- [ ] API lấy danh sách topic xu hướng theo cột planned `topics.trending`: `GET /api/v1/stats/topics/trends`
+- [ ] API lấy danh sách topic xu hướng theo cột `topics.trending`: `GET /api/v1/stats/topics/trends`
 
 ### Nâng cao - Chấm điem paper đang đọc
 
-- [ ] API lưu điểm user chấm vào DB: `POST /api/v1/papers/:id/rating`
-- [ ] API lấy điểm paper của user: `GET /api/v1/papers/:id/rating/me`
+- [ ] API lưu điểm user chấm vào DB qua `user_paper_interactions.rating`: `POST /api/v1/papers/:id/rating`
+- [ ] API lấy điểm paper của user từ `user_paper_interactions`: `GET /api/v1/papers/:id/rating/me`
 
 
 - [ ] API lịch sử đọc (trả kq và lưu kq)
@@ -320,34 +323,39 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 - [x]
 
 ### Nâng cao - Gợi ý paper liên quan
-- [ ] Bảng `related_papers`
-- [ ] Cột `paper_id`
-- [ ] Cột `related_paper_id`
+- [x] Bảng `related_papers`
+- [x] Cột `paper_id`
+- [x] Cột `related_paper_id`
 - [ ] Tìm paper cùng topic
 - [ ] Tìm paper cùng tác giả - Low Priority
 
 ### Nâng cao - Phát hiện paper trùng hoặc gần giống
 
-- [ ] Bảng `matching_papers`
-- [ ] Cột `paper_id`
-- [ ] Cột `related_paper_id`
+- [x] Bảng `matching_papers`
+- [x] Cột `paper_id`
+- [x] Cột `matching_paper_id`
 - [x] Tìm paper trùng hoặc gần giống bằng python
+- [ ] Lưu kết quả kiểm tra trùng vào `matching_papers`
 
 ### Nâng cao - Gửi thong bao khi co paper mới
 
 - [x] Server DB/crawler cào data theo giờ bằng `database/run_hourly_pipeline.py`
 - [ ] Gửi event cho FE/BE sau khi cào xong
-- [ ] Bảng `notifications` sẽ thực hiện sau, DB hiện tại chưa có bảng này
+- [x] Bảng `notifications`
+- [x] Bảng `user_notifications`
+- [x] Pipeline tạo notification dạng gộp theo topic khi crawler insert paper mới
 
 ### Nâng cao - Thong ke xu hưong theo chủ đề
-- [ ] Tạo 1 cột `trending` cho bảng `topics`
+- [x] Tạo 1 cột `trending` cho bảng `topics`
 - [ ] Server DB call py func truyền vào tất cả các topic, AI thống kê ra các topic xu hướng trả về list - đầu list là xu hướng nhất,...
 - [ ] Lưu vào DB ở cột `trending`
 
 ### Nâng cao - Chấm điem paper đang đọc
 
-- [ ] Tạo 1 bảng `user_paper_interactions`
-- [ ] 1 cột avg_rating -> bảng papers
+- [x] Tạo bảng `user_paper_interactions`
+- [x] Tạo cột `avg_rating` trong bảng `papers`
+- [x] Pipeline cập nhật `papers.avg_rating` từ rating trong `user_paper_interactions`
+- [ ] BE API chấm điểm/lấy điểm paper
 
 ---
 
@@ -405,7 +413,7 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 - [x] Hàm `_cosine_similarity`
 - [x] Hàm `check_duplicate` trả nhiều paper gần giống qua field `matches`
 - [x] Script chạy duplicate checker: `python ai/run_duplicate_checker.py`
-- [ ] Lưu kết quả kiểm tra trùng vào bảng planned `matching_papers`
+- [ ] Lưu kết quả kiểm tra trùng vào bảng `matching_papers`
 
 ### Nâng cao - Gửi thong bao khi co paper mới
 
@@ -738,7 +746,7 @@ Database được triển khai bằng Python với:
 - `models.py`: định nghĩa ORM models
 - `alembic/`: quản lý database migrations
 
-DB nghiệp vụ hiện tại có 5 bảng chính:
+DB nghiệp vụ hiện tại có các bảng core:
 
 ```txt
 users
@@ -748,11 +756,23 @@ favorites
 user_topics
 ```
 
+DB cũng đã có schema cho các nhóm advanced:
+
+```txt
+related_papers
+matching_papers
+user_paper_interactions
+notifications
+user_notifications
+topics.trending
+papers.avg_rating
+```
+
 Ghi chú:
 
 - `alembic_version` là bảng metadata của Alembic, không phải bảng nghiệp vụ.
 - `papers.topic_id` đã có trong DB hiện tại và liên kết tới `topics.id`.
-- Các bảng/cột advanced `related_papers`, `matching_papers`, `paper_ratings`, `topics.trending`, `notifications` chưa có trong DB hiện tại.
+- Các bảng/cột advanced đã có schema DB, nhưng BE chưa implement đầy đủ API cho related/matching/history/trends/ratings.
 
 ---
 
@@ -778,6 +798,7 @@ Các bảng đang có trong DB hiện tại:
 |---|---|---|
 | id | Integer | Primary key, index |
 | name | String(100) | Unique, index, not null |
+| trending | Integer | Default 0, dùng cho topic xu hướng |
 
 #### papers
 
@@ -791,6 +812,7 @@ Các bảng đang có trong DB hiện tại:
 | authors | String(500) | Nullable |
 | published_date | DateTime | Nullable |
 | pdf_url | String(500) | Nullable |
+| avg_rating | Float | Default 0.0 |
 | created_at | DateTime | Default current UTC time |
 | topic_id | Integer | Foreign key to `topics.id`, nullable |
 
@@ -809,9 +831,9 @@ Các bảng đang có trong DB hiện tại:
 | user_id | Integer | Foreign key to `users.id`, primary key |
 | topic_id | Integer | Foreign key to `topics.id`, primary key |
 
-### Future/Planned Entities
+### Advanced Entities Đã Có Schema DB
 
-Các bảng/cột dưới đây chưa có trong DB hiện tại, sẽ bổ sung khi làm feature nâng cao:
+Các bảng/cột dưới đây đã có trong `database/models.py` và migration. Backend Express đã dùng `notifications`/`user_notifications`; các phần related/matching/history/trends/ratings vẫn chưa implement đầy đủ API.
 
 #### related_papers
 
@@ -825,32 +847,42 @@ Các bảng/cột dưới đây chưa có trong DB hiện tại, sẽ bổ sung 
 | Field | Type | Constraint |
 |---|---|---|
 | paper_id | Integer | Foreign key to `papers.id`, primary key |
-| related_paper_id | Integer | Foreign key to `papers.id`, primary key |
+| matching_paper_id | Integer | Foreign key to `papers.id`, primary key |
+| similarity_score | Float | Not null |
+| match_type | String(50) | Default `AI_ABSTRACT` |
+| created_at | DateTime | Default current UTC time |
 
 #### notifications
 
 | Field | Type | Constraint |
 |---|---|---|
-| id | Integer | Primary key |
-| user_id | Integer | Foreign key to `users.id` |
-| title | String | Not null |
+| notification_id | Integer | Primary key, index |
+| type | String(50) | Not null |
+| title | String(255) | Not null |
 | message | Text | Not null |
-| is_read | Boolean | Default false |
+| paper_id | Integer | Foreign key to `papers.id`, nullable |
 | created_at | DateTime | Default current UTC time |
 
-#### paper_ratings
+#### user_notifications
+
+| Field | Type | Constraint |
+|---|---|---|
+| user_id | Integer | Foreign key to `users.id`, primary key |
+| notification_id | Integer | Foreign key to `notifications.notification_id`, primary key |
+| is_read | Boolean | Default false |
+| read_at | DateTime | Nullable |
+
+#### user_paper_interactions
 
 | Field | Type | Constraint |
 |---|---|---|
 | user_id | Integer | Foreign key to `users.id`, primary key |
 | paper_id | Integer | Foreign key to `papers.id`, primary key |
-| rating | Integer | User rating value |
-
-#### topics.trending
-
-| Field | Type | Constraint |
-|---|---|---|
-| trending | Integer | Planned column on `topics`, dùng để sắp xếp topic xu hướng |
+| is_read | Boolean | Default false |
+| rating | Integer | Nullable |
+| notes | Text | Nullable |
+| created_at | DateTime | Default current UTC time |
+| updated_at | DateTime | Default current UTC time, auto-update |
 
 ---
 
@@ -917,14 +949,20 @@ Frontend và Backend thống nhất một base URL khi tích hợp.
 | Favorites | GET | `/api/v1/favorites` | Lấy paper yêu thích | Implemented |
 | Favorites | POST | `/api/v1/papers/favorite/:id` | Lưu paper yêu thích | Implemented |
 | Favorites | DELETE | `/api/v1/papers/favorite/:id` | Bỏ lưu paper yêu thích | Implemented |
+| History | GET | `/api/v1/history?page=1&limit=5` | Lấy lịch sử đọc từ `user_paper_interactions` | Planned Core/FE calling |
+| History | DELETE | `/api/v1/history/:paperId` | Xóa một mục lịch sử đọc | Planned Core/FE calling |
+| History | DELETE | `/api/v1/history` | Xóa toàn bộ lịch sử đọc | Planned Core/FE calling |
 | Crawler | POST | `/api/v1/crawler/run` | Trigger crawler thủ công cho dev/admin | Planned Core/Internal |
-| Related | GET | `/api/v1/papers/:id/related?limit=5` | Lấy paper liên quan cho trang chi tiết, cần bảng planned `related_papers` hoặc logic fallback theo topic | Planned Core/Upcoming |
-| Duplicate | GET | `/api/v1/papers/:id/matches?limit=5` | Lấy paper trùng/gần giống từ bảng planned `matching_papers` | Advanced |
-| Notifications | GET | `/api/v1/notifications` | Lấy thông báo - thực hiện sau khi có bảng `notifications` | Future/Later |
-| Notifications | PATCH | `/api/v1/notifications/:id/read` | Đánh dấu thông báo đã đọc - thực hiện sau khi có bảng `notifications` | Future/Later |
-| Stats | GET | `/api/v1/stats/topics/trends` | Lấy topic xu hướng từ cột planned `topics.trending` | Advanced |
-| Ratings | POST | `/api/v1/papers/:id/rating` | Lưu điểm vào bảng planned `paper_ratings` | Advanced |
-| Ratings | GET | `/api/v1/papers/:id/rating/me` | Lấy điểm từ bảng planned `paper_ratings` | Advanced |
+| Related | GET | `/api/v1/papers/:id/related?limit=5` | Lấy paper liên quan từ `related_papers`; FE đã chuẩn bị gọi | Planned Core/FE calling |
+| Duplicate | GET | `/api/v1/papers/:id/matches?limit=5` | Lấy paper trùng/gần giống từ `matching_papers`; FE đã chuẩn bị gọi | Advanced/FE calling |
+| Notifications | GET | `/api/v1/notifications` | Lấy thông báo từ `notifications` + `user_notifications`; FE đã gắn chuông thông báo | Implemented |
+| Notifications | GET | `/api/v1/notifications/stream` | SSE stream nhận notification realtime | Implemented |
+| Notifications | PATCH | `/api/v1/notifications/:id/read` | Đánh dấu một thông báo đã đọc | Implemented |
+| Notifications | PATCH | `/api/v1/notifications/read-all` | Đánh dấu tất cả thông báo đã đọc | Implemented |
+| Internal | POST | `/api/v1/internal/notifications/push` | DB pipeline báo BE đẩy notification qua SSE | Implemented/Internal |
+| Stats | GET | `/api/v1/stats/topics/trends` | Lấy topic xu hướng từ `topics.trending`; FE đã có trang Trend | Advanced/FE calling |
+| Ratings | POST | `/api/v1/papers/:id/rating` | Lưu điểm vào `user_paper_interactions.rating`; FE đã có UI rating | Advanced/FE calling |
+| Ratings | GET | `/api/v1/papers/:id/rating/me` | Lấy điểm của user từ `user_paper_interactions` | Advanced/FE calling |
 
 ---
 

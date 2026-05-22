@@ -1,10 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Loader2, ChevronDown, ListFilter } from "lucide-react";
+import { Loader2, ChevronDown, ListFilter, RefreshCw } from "lucide-react";
 import PaperCard from "../components/PaperCard";
 import Pagination from "../components/Pagination";
 import { getPapers, searchPapers } from "../services/API";
 import { useFavorites } from "../contexts/FavoritesContext";
+import { useCrawler } from "../contexts/CrawlerContext";
+import {
+  getPaperUpdateTopicId,
+  subscribePaperDataUpdated,
+} from "../utils/paperRefreshEvent";
 
 export default function DashboardPage({ searchQuery }) {
   const [filter, setFilter] = useState("all");
@@ -13,17 +18,36 @@ export default function DashboardPage({ searchQuery }) {
   const [papers, setPapers] = useState([]);
   const [searchParams] = useSearchParams();
   const { favoriteIds, toggleFavorite } = useFavorites();
+  const { crawlerCooldownSeconds, isCrawlerRunning, startCrawler } = useCrawler();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [refreshMessage, setRefreshMessage] = useState(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [refreshTick, setRefreshTick] = useState(0);
   const postsPerPage = 5;
 
   const topicId = searchParams.get("topic");
   const prevTopicIdRef = useRef(topicId);
   const prevSearchQueryRef = useRef(searchQuery);
+
+  useEffect(() => {
+    return subscribePaperDataUpdated((event) => {
+      const updatedTopicId = getPaperUpdateTopicId(event.detail);
+
+      if (
+        topicId &&
+        updatedTopicId &&
+        String(updatedTopicId) !== String(topicId)
+      ) {
+        return;
+      }
+
+      setRefreshTick((value) => value + 1);
+    });
+  }, [topicId]);
 
   useEffect(() => {
     // Kiểm tra nếu topic hoặc từ khóa tìm kiếm thay đổi thì reset về trang 1
@@ -82,7 +106,7 @@ export default function DashboardPage({ searchQuery }) {
     };
 
     fetchPapers();
-  }, [currentPage, topicId, filter, searchQuery]);
+  }, [currentPage, topicId, filter, searchQuery, refreshTick]);
 
   // Xử lý đóng dropdown khi click ra ngoài
   useEffect(() => {
@@ -98,6 +122,27 @@ export default function DashboardPage({ searchQuery }) {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isOpenFilter]);
+
+  const handleRefreshAllTopics = async () => {
+    setRefreshMessage(null);
+
+    if (crawlerCooldownSeconds > 0) {
+      setRefreshMessage(`Vui lòng chờ ${crawlerCooldownSeconds}s trước khi tải lại tiếp.`);
+      return;
+    }
+
+    try {
+      await startCrawler({ max_results: 5 });
+    } catch (err) {
+      if (err.response?.status === 409) {
+        setRefreshMessage("Đang tải lại dữ liệu, vui lòng chờ hoàn tất.");
+      } else if (err.response?.status === 429) {
+        setRefreshMessage("Vui lòng chờ khoảng 20 giây trước khi tải lại tiếp.");
+      } else {
+        setRefreshMessage("Không thể tải lại dữ liệu mới. Vui lòng thử lại sau.");
+      }
+    }
+  };
 
   const filterOptions = {
     all: "Tất cả bài báo",
@@ -142,10 +187,38 @@ export default function DashboardPage({ searchQuery }) {
           )}
         </div>
 
-        <div className="hidden md:block text-right">
-          <p className="text-xl font-black text-gray-800">{total} bài báo</p>
+        <div className="flex items-center gap-3 ml-auto">
+          <button
+            type="button"
+            onClick={handleRefreshAllTopics}
+            disabled={isCrawlerRunning || crawlerCooldownSeconds > 0}
+            className="inline-flex items-center gap-2 px-4 py-3 bg-white border border-emerald-100 text-emerald-700 rounded-2xl font-bold shadow-sm hover:bg-emerald-50 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+            title="Tải lại 5 paper mới nhất"
+          >
+            <RefreshCw
+              size={18}
+              className={isCrawlerRunning ? "animate-spin" : ""}
+            />
+            <span>
+              {isCrawlerRunning
+                ? "Đang tải lại"
+                : crawlerCooldownSeconds > 0
+                  ? `Chờ ${crawlerCooldownSeconds}s`
+                  : "Tải lại"}
+            </span>
+          </button>
+
+          <div className="hidden md:block text-right">
+            <p className="text-xl font-black text-gray-800">{total} bài báo</p>
+          </div>
         </div>
       </header>
+
+      {(refreshMessage || crawlerCooldownSeconds > 0) && !isCrawlerRunning && (
+        <div className="mb-4 mx-4 rounded-2xl border border-emerald-100 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-700">
+          {refreshMessage || `Vui lòng chờ ${crawlerCooldownSeconds}s trước khi tải lại tiếp.`}
+        </div>
+      )}
 
       {/* Hiển thị lỗi nếu có */}
       {error ? (

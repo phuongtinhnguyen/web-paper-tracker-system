@@ -8,7 +8,7 @@ import sys
 from apscheduler.schedulers.blocking import BlockingScheduler
 from dotenv import load_dotenv
 import requests
-from sqlalchemy import func
+from sqlalchemy import func, text
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -31,7 +31,12 @@ from models import (  # noqa: E402
     UserPaperInteraction,
     user_topics_table,
 )
-from paper_ai import check_duplicate, summarize_pending_papers  # noqa: E402
+from paper_ai import (  # noqa: E402
+    analyze_topic_trends,
+    check_duplicate,
+    find_related_papers,
+    summarize_pending_papers,
+)
 
 
 logging.basicConfig(
@@ -49,21 +54,67 @@ def empty_notification_result() -> dict:
     }
 
 
-def check_duplicates_for_new_papers(
-    new_papers: list[dict],
+def empty_crawler_result() -> dict:
+    return {
+        "success": True,
+        "fetched_paper_count": 0,
+        "new_paper_count": 0,
+        "skipped_existing_count": 0,
+        "new_papers": [],
+        "topics": [],
+    }
+
+
+def get_target_papers(new_papers: list[dict]) -> list[dict]:
+    if new_papers:
+        logger.info(
+            "[PIPELINE] Xu ly %s paper moi cho related/duplicate.",
+            len(new_papers),
+        )
+        return new_papers
+
+    db = SessionLocal()
+
+    try:
+        papers = (
+            db.query(Paper.id, Paper.arxiv_id, Paper.title, Paper.topic_id)
+            .order_by(Paper.id.desc())
+            .all()
+        )
+
+        logger.info(
+            "[PIPELINE] Khong co paper moi, xu ly %s paper da co trong DB cho related/duplicate.",
+            len(papers),
+        )
+
+        return [
+            {
+                "id": paper.id,
+                "arxiv_id": paper.arxiv_id,
+                "title": paper.title,
+                "topic_id": paper.topic_id,
+            }
+            for paper in papers
+        ]
+    finally:
+        db.close()
+
+
+def check_duplicates_for_papers(
+    papers: list[dict],
     threshold: float,
     limit: int,
 ) -> list[dict]:
-    if not new_papers:
-        logger.info("[PIPELINE] Bo qua kiem tra trung: khong co paper moi.")
+    if not papers:
+        logger.info("[PIPELINE] Bo qua kiem tra trung: khong co paper can xu ly.")
         return []
 
     db = SessionLocal()
     duplicate_results = []
 
     try:
-        for new_paper in new_papers:
-            paper = db.query(Paper).filter(Paper.id == new_paper["id"]).first()
+        for target_paper in papers:
+            paper = db.query(Paper).filter(Paper.id == target_paper["id"]).first()
 
             if not paper:
                 continue
@@ -95,6 +146,197 @@ def check_duplicates_for_new_papers(
         db.close()
 
 
+def save_duplicate_matches(duplicate_results: list[dict]) -> int:
+    if not duplicate_results:
+        logger.info("[PIPELINE] Bo qua luu matching_papers: khong co ket qua.")
+        return 0
+
+    db = SessionLocal()
+    saved_count = 0
+    seen_pairs = set()
+
+    try:
+        for duplicate_result in duplicate_results:
+            paper_id = duplicate_result.get("paper_id")
+
+            if not paper_id:
+                continue
+
+            for match in duplicate_result.get("matches", []):
+                matching_paper_id = match.get("id")
+
+                if not matching_paper_id or matching_paper_id == paper_id:
+                    continue
+
+                first_paper_id = min(paper_id, matching_paper_id)
+                second_paper_id = max(paper_id, matching_paper_id)
+                pair_key = (first_paper_id, second_paper_id)
+
+                if pair_key in seen_pairs:
+                    continue
+
+                seen_pairs.add(pair_key)
+
+                similarity = float(match.get("similarity") or 0) / 100
+                match_type = match.get("status") or "DUPLICATE_CHECK"
+
+                db.execute(
+                    text(
+                        """
+                        INSERT INTO matching_papers (
+                            paper_id,
+                            matching_paper_id,
+                            similarity_score,
+                            match_type,
+                            created_at
+                        )
+                        VALUES (
+                            :paper_id,
+                            :matching_paper_id,
+                            :similarity_score,
+                            :match_type,
+                            NOW()
+                        )
+                        ON CONFLICT (paper_id, matching_paper_id)
+                        DO UPDATE SET
+                            similarity_score = EXCLUDED.similarity_score,
+                            match_type = EXCLUDED.match_type,
+                            created_at = NOW()
+                        """
+                    ),
+                    {
+                        "paper_id": first_paper_id,
+                        "matching_paper_id": second_paper_id,
+                        "similarity_score": similarity,
+                        "match_type": match_type,
+                    },
+                )
+                saved_count += 1
+
+        db.commit()
+        logger.info(
+            "[PIPELINE] Da luu %s cap paper trung hoac gan giong vao matching_papers.",
+            saved_count,
+        )
+        return saved_count
+
+    except Exception as error:
+        db.rollback()
+        logger.error("[PIPELINE] Loi khi luu matching_papers: %s", error)
+        return 0
+    finally:
+        db.close()
+
+
+def find_related_for_papers(
+    papers: list[dict],
+    threshold: float,
+    upper_threshold: float,
+    limit: int,
+) -> list[dict]:
+    if not papers:
+        logger.info("[PIPELINE] Bo qua tim paper lien quan: khong co paper can xu ly.")
+        return []
+
+    db = SessionLocal()
+    related_results = []
+
+    try:
+        for paper in papers:
+            paper_id = paper.get("id")
+
+            if not paper_id:
+                continue
+
+            result = find_related_papers(
+                db=db,
+                paper_id=paper_id,
+                threshold=threshold,
+                upper_threshold=upper_threshold,
+                limit=limit,
+            )
+            related_results.append(result)
+
+            if result["related_count"]:
+                logger.info(
+                    "[PIPELINE] Paper %s co %s paper lien quan.",
+                    paper_id,
+                    result["related_count"],
+                )
+
+        return related_results
+    finally:
+        db.close()
+
+
+def save_related_papers(related_results: list[dict]) -> int:
+    if not related_results:
+        logger.info("[PIPELINE] Bo qua luu related_papers: khong co ket qua.")
+        return 0
+
+    db = SessionLocal()
+    saved_count = 0
+    seen_pairs = set()
+
+    try:
+        for related_result in related_results:
+            paper_id = related_result.get("paper_id")
+
+            if not paper_id:
+                continue
+
+            for related_paper in related_result.get("related_papers", []):
+                related_paper_id = related_paper.get("id")
+
+                if not related_paper_id or related_paper_id == paper_id:
+                    continue
+
+                first_paper_id = min(paper_id, related_paper_id)
+                second_paper_id = max(paper_id, related_paper_id)
+                pair_key = (first_paper_id, second_paper_id)
+
+                if pair_key in seen_pairs:
+                    continue
+
+                seen_pairs.add(pair_key)
+
+                result = db.execute(
+                    text(
+                        """
+                        INSERT INTO related_papers (
+                            paper_id,
+                            related_paper_id
+                        )
+                        VALUES (
+                            :paper_id,
+                            :related_paper_id
+                        )
+                        ON CONFLICT (paper_id, related_paper_id)
+                        DO NOTHING
+                        """
+                    ),
+                    {
+                        "paper_id": first_paper_id,
+                        "related_paper_id": second_paper_id,
+                    },
+                )
+                saved_count += result.rowcount or 0
+
+        db.commit()
+        logger.info(
+            "[PIPELINE] Da luu %s cap paper lien quan vao related_papers.",
+            saved_count,
+        )
+        return saved_count
+
+    except Exception as error:
+        db.rollback()
+        logger.error("[PIPELINE] Loi khi luu related_papers: %s", error)
+        return 0
+    finally:
+        db.close()
+
+
 def summarize_pending(batch_size: int) -> int:
     db = SessionLocal()
 
@@ -104,7 +346,10 @@ def summarize_pending(batch_size: int) -> int:
         db.close()
 
 
-def create_new_paper_notifications(new_papers: list[dict]) -> dict:
+def create_new_paper_notifications(
+    new_papers: list[dict],
+    trigger_user_id: int | None = None,
+) -> dict:
     if not new_papers:
         logger.info("[PIPELINE] Bo qua tao thong bao: khong co paper moi.")
         return empty_notification_result()
@@ -142,10 +387,14 @@ def create_new_paper_notifications(new_papers: list[dict]) -> dict:
                 .all()
             )
             follower_ids = [row[0] for row in follower_rows]
+            recipient_ids = set(follower_ids)
 
-            if not follower_ids:
+            if trigger_user_id:
+                recipient_ids.add(trigger_user_id)
+
+            if not recipient_ids:
                 logger.info(
-                    "[PIPELINE] Bo qua thong bao cho topic '%s': chua co user theo doi.",
+                    "[PIPELINE] Bo qua thong bao cho topic '%s': chua co user nhan thong bao.",
                     topic.name,
                 )
                 continue
@@ -171,7 +420,7 @@ def create_new_paper_notifications(new_papers: list[dict]) -> dict:
             db.flush()
             notification_ids.append(notification.notification_id)
 
-            for user_id in follower_ids:
+            for user_id in recipient_ids:
                 db.add(
                     UserNotification(
                         user_id=user_id,
@@ -181,7 +430,7 @@ def create_new_paper_notifications(new_papers: list[dict]) -> dict:
                 )
 
             notification_count += 1
-            delivery_count += len(follower_ids)
+            delivery_count += len(recipient_ids)
 
         db.commit()
         logger.info(
@@ -278,20 +527,149 @@ def update_average_ratings() -> int:
         db.close()
 
 
+def update_topic_trends_by_recent_count(db, recent_days: int) -> int:
+    result = db.execute(
+        text(
+            """
+            UPDATE topics t
+            SET trending = COALESCE(stats.recent_paper_count, 0)
+            FROM (
+                SELECT
+                    topic_list.id AS topic_id,
+                    COUNT(p.id)::int AS recent_paper_count
+                FROM topics topic_list
+                LEFT JOIN papers p
+                    ON p.topic_id = topic_list.id
+                   AND COALESCE(p.published_date, p.created_at)
+                       >= NOW() - (:recent_days * INTERVAL '1 day')
+                GROUP BY topic_list.id
+            ) stats
+            WHERE t.id = stats.topic_id
+            """
+        ),
+        {"recent_days": recent_days},
+    )
+
+    return result.rowcount or 0
+
+
+def update_topic_trends_by_ai(db) -> int:
+    topics = db.query(Topic).order_by(Topic.id.asc()).all()
+
+    if not topics:
+        logger.info("[PIPELINE] Bo qua AI trend: khong co topic.")
+        return 0
+
+    topic_titles = [topic.name for topic in topics]
+    trend_result = analyze_topic_trends(topic_titles)
+
+    if trend_result.get("source") == "fallback":
+        raise RuntimeError(trend_result.get("analysis") or "AI trend fallback")
+
+    ranked_topics = trend_result.get("ranked_topics") or topic_titles
+
+    normalized_topics = {
+        topic.name.strip().lower(): topic
+        for topic in topics
+        if topic.name
+    }
+    max_score = len(topics)
+    updated_topic_ids = set()
+    update_count = 0
+
+    for index, topic_name in enumerate(ranked_topics):
+        topic = normalized_topics.get(str(topic_name).strip().lower())
+
+        if not topic or topic.id in updated_topic_ids:
+            continue
+
+        topic.trending = max_score - index
+        updated_topic_ids.add(topic.id)
+        update_count += 1
+
+    for topic in topics:
+        if topic.id in updated_topic_ids:
+            continue
+
+        topic.trending = 0
+
+    logger.info(
+        "[PIPELINE] AI trend analysis: %s",
+        trend_result.get("analysis", ""),
+    )
+
+    return update_count
+
+
+def update_topic_trends(recent_days: int, use_ai: bool) -> int:
+    logger.info(
+        "[PIPELINE] Bat dau cap nhat xu huong topic. use_ai=%s, fallback_recent_days=%s.",
+        use_ai,
+        recent_days,
+    )
+    db = SessionLocal()
+
+    try:
+        if use_ai:
+            try:
+                update_count = update_topic_trends_by_ai(db)
+                trend_source = "ai"
+            except Exception as error:
+                logger.warning(
+                    "[PIPELINE] Loi AI trend, fallback sang dem paper gan day: %s",
+                    error,
+                )
+                update_count = update_topic_trends_by_recent_count(db, recent_days)
+                trend_source = "recent_count_fallback"
+        else:
+            update_count = update_topic_trends_by_recent_count(db, recent_days)
+            trend_source = "recent_count"
+
+        db.commit()
+        logger.info(
+            "[PIPELINE] Da cap nhat xu huong cho %s topic bang %s.",
+            update_count,
+            trend_source,
+        )
+        return update_count
+
+    except Exception as error:
+        db.rollback()
+        logger.error("[PIPELINE] Loi khi cap nhat xu huong topic: %s", error)
+        return 0
+    finally:
+        db.close()
+
+
 def run_pipeline(
     crawler_max_results: int,
     crawler_sleep_seconds: int,
     summary_batch_size: int,
     duplicate_threshold: float,
     duplicate_limit: int,
+    related_threshold: float,
+    related_limit: int,
+    trend_recent_days: int,
+    use_ai_trends: bool,
+    skip_crawler: bool,
     skip_summary: bool,
+    skip_trends: bool,
+    crawler_topic_id: int | None = None,
+    trigger_user_id: int | None = None,
 ) -> dict:
-    logger.info("[PIPELINE] Bat dau pipeline: crawler + kiem tra trung + summary.")
-
-    crawler_result = run_crawler(
-        max_results_per_topic=crawler_max_results,
-        sleep_seconds=crawler_sleep_seconds,
+    logger.info(
+        "[PIPELINE] Bat dau pipeline: crawler + notification + related + kiem tra trung + summary."
     )
+
+    if skip_crawler:
+        logger.info("[PIPELINE] Bo qua buoc crawler.")
+        crawler_result = empty_crawler_result()
+    else:
+        crawler_result = run_crawler(
+            max_results=crawler_max_results,
+            sleep_seconds=crawler_sleep_seconds,
+            topic_id=crawler_topic_id,
+        )
 
     if not crawler_result["success"]:
         logger.error("[PIPELINE] Crawler bi loi: %s", crawler_result.get("error"))
@@ -302,21 +680,37 @@ def run_pipeline(
             "summarized_count": 0,
             "notification_count": 0,
             "notification_push_sent": False,
+            "related_results": [],
+            "saved_related_count": 0,
+            "saved_duplicate_match_count": 0,
+            "updated_ratings_count": 0,
+            "updated_topic_trends_count": 0,
         }
 
     notification_result = create_new_paper_notifications(
-        crawler_result["new_papers"]
+        crawler_result["new_papers"],
+        trigger_user_id=trigger_user_id,
     )
     notification_count = notification_result["notification_count"]
     notification_push_sent = notify_backend_new_notifications(
         notification_result["notification_ids"]
     )
 
-    duplicate_results = check_duplicates_for_new_papers(
-        new_papers=crawler_result["new_papers"],
+    target_papers = get_target_papers(crawler_result["new_papers"])
+    related_results = find_related_for_papers(
+        papers=target_papers,
+        threshold=related_threshold,
+        upper_threshold=duplicate_threshold,
+        limit=related_limit,
+    )
+    saved_related_count = save_related_papers(related_results)
+
+    duplicate_results = check_duplicates_for_papers(
+        papers=target_papers,
         threshold=duplicate_threshold,
         limit=duplicate_limit,
     )
+    saved_duplicate_match_count = save_duplicate_matches(duplicate_results)
 
     if skip_summary:
         logger.info("[PIPELINE] Bo qua buoc summary.")
@@ -324,26 +718,42 @@ def run_pipeline(
     else:
         summarized_count = summarize_pending(summary_batch_size)
 
+    updated_ratings_count = update_average_ratings()
+    if skip_trends:
+        logger.info("[PIPELINE] Bo qua buoc cap nhat topic trend.")
+        updated_topic_trends_count = 0
+    else:
+        updated_topic_trends_count = update_topic_trends(
+            recent_days=trend_recent_days,
+            use_ai=use_ai_trends,
+        )
+
     logger.info(
-        "[PIPELINE] Hoan thanh. Da lay: %s, da them: %s, bo qua do da ton tai: %s, thong bao: %s, kiem tra trung: %s, da summary: %s.",
+        "[PIPELINE] Hoan thanh. Da lay: %s, da them: %s, bo qua do da ton tai: %s, thong bao: %s, luu related: %s, kiem tra trung: %s, luu match: %s, da summary: %s, cap nhat rating: %s, cap nhat trend topic: %s.",
         crawler_result["fetched_paper_count"],
         crawler_result["new_paper_count"],
         crawler_result["skipped_existing_count"],
         notification_count,
+        saved_related_count,
         len(duplicate_results),
+        saved_duplicate_match_count,
         summarized_count,
+        updated_ratings_count,
+        updated_topic_trends_count,
     )
-
-    updated_ratings_count = update_average_ratings()
 
     return {
         "success": True,
         "crawler": crawler_result,
         "notification_count": notification_count,
         "notification_push_sent": notification_push_sent,
+        "related_results": related_results,
+        "saved_related_count": saved_related_count,
         "duplicate_results": duplicate_results,
+        "saved_duplicate_match_count": saved_duplicate_match_count,
         "summarized_count": summarized_count,
         "updated_ratings_count": updated_ratings_count,
+        "updated_topic_trends_count": updated_topic_trends_count,
     }
 
 
@@ -370,14 +780,26 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--crawler-max-results",
         type=int,
-        default=10,
-        help="So ket qua arXiv toi da cho moi topic trong moi lan crawler.",
+        default=5,
+        help="So paper moi nhat toi da can lay. Neu co --topic-id thi lay rieng topic do. Mac dinh: 5.",
     )
     parser.add_argument(
         "--crawler-sleep-seconds",
         type=int,
-        default=3,
-        help="So giay nghi giua cac topic de tranh rate limit arXiv. Mac dinh: 3.",
+        default=10,
+        help="So giay nghi giua cac topic de tranh rate limit arXiv. Mac dinh: 10.",
+    )
+    parser.add_argument(
+        "--topic-id",
+        type=int,
+        default=None,
+        help="Neu co, crawler chi lay paper moi cho mot topic theo id trong DB.",
+    )
+    parser.add_argument(
+        "--trigger-user-id",
+        type=int,
+        default=None,
+        help="User id da trigger manual crawler; user nay se nhan notification neu co paper moi.",
     )
     parser.add_argument(
         "--summary-batch-size",
@@ -388,14 +810,47 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--duplicate-threshold",
         type=float,
-        default=0.75,
-        help="Nguong do tuong dong tu 0 den 1. Mac dinh: 0.75.",
+        default=0.50,
+        help="Nguong do tuong dong tu 0 den 1. Mac dinh: 0.50.",
     )
     parser.add_argument(
         "--duplicate-limit",
         type=int,
         default=5,
-        help="So paper trung hoac gan giong toi da cho moi paper moi.",
+        help="So paper trung hoac gan giong toi da cho moi paper duoc xu ly.",
+    )
+    parser.add_argument(
+        "--related-threshold",
+        type=float,
+        default=0.20,
+        help="Nguong similarity toi thieu de xem la paper lien quan. Mac dinh: 0.20.",
+    )
+    parser.add_argument(
+        "--related-limit",
+        type=int,
+        default=5,
+        help="So paper lien quan toi da duoc luu cho moi paper duoc xu ly.",
+    )
+    parser.add_argument(
+        "--trend-recent-days",
+        type=int,
+        default=7,
+        help="So ngay gan nhat dung de fallback tinh topics.trending. Mac dinh: 7.",
+    )
+    parser.add_argument(
+        "--skip-ai-trends",
+        action="store_true",
+        help="Khong goi Groq AI de rank topic, fallback sang dem paper gan day.",
+    )
+    parser.add_argument(
+        "--skip-crawler",
+        action="store_true",
+        help="Bo qua buoc crawl arXiv; related/duplicate se xu ly paper da co trong DB neu khong co paper moi.",
+    )
+    parser.add_argument(
+        "--skip-trends",
+        action="store_true",
+        help="Bo qua buoc cap nhat topics.trending.",
     )
     parser.add_argument(
         "--skip-summary",
@@ -414,7 +869,15 @@ def main():
         "summary_batch_size": args.summary_batch_size,
         "duplicate_threshold": args.duplicate_threshold,
         "duplicate_limit": args.duplicate_limit,
+        "related_threshold": args.related_threshold,
+        "related_limit": args.related_limit,
+        "trend_recent_days": args.trend_recent_days,
+        "use_ai_trends": not args.skip_ai_trends,
+        "skip_crawler": args.skip_crawler,
         "skip_summary": args.skip_summary,
+        "skip_trends": args.skip_trends,
+        "crawler_topic_id": args.topic_id,
+        "trigger_user_id": args.trigger_user_id,
     }
 
     if args.run_once:

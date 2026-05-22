@@ -19,6 +19,48 @@ const getPaperByIdSchema = z.object({
   body: z.object({}).optional(),
 });
 
+const getRelatedPapersSchema = z.object({
+  params: z.object({
+    id: z.coerce.number().int().positive(),
+  }),
+  query: z.object({
+    limit: z.coerce.number().int().positive().max(20).default(5),
+  }),
+  body: z.object({}).optional(),
+});
+
+const getMatchingPapersSchema = z.object({
+  params: z.object({
+    id: z.coerce.number().int().positive(),
+  }),
+  query: z.object({
+    limit: z.coerce.number().int().positive().max(20).default(5),
+  }),
+  body: z.object({}).optional(),
+});
+
+const submitPaperRatingSchema = z.object({
+  params: z.object({
+    id: z.coerce.number().int().positive(),
+  }),
+  body: z.object({
+    rating: z.coerce
+      .number()
+      .int()
+      .min(1, "Rating must be from 1 to 10")
+      .max(10, "Rating must be from 1 to 10"),
+  }),
+  query: z.object({}).optional(),
+});
+
+const getMyPaperRatingSchema = z.object({
+  params: z.object({
+    id: z.coerce.number().int().positive(),
+  }),
+  query: z.object({}).optional(),
+  body: z.object({}).optional(),
+});
+
 const searchPapersSchema = z.object({
   query: z.object({
     q: z.string().trim().min(1, "Search keyword is required"),
@@ -33,5 +75,9 @@ const searchPapersSchema = z.object({
 module.exports = {
   getPapersSchema,
   getPaperByIdSchema,
+  getRelatedPapersSchema,
+  getMatchingPapersSchema,
+  submitPaperRatingSchema,
+  getMyPaperRatingSchema,
   searchPapersSchema,
 };

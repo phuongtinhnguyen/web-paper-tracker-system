@@ -167,4 +167,12 @@ export const createNotificationStream = () => {
   );
 };
 
+/** POST /crawler/run  -> run manual crawler */
+export const runCrawler = (payload = {}) =>
+  api.post("/crawler/run", payload);
+
+/** GET /crawler/status  -> current manual crawler status */
+export const getCrawlerStatus = () =>
+  api.get("/crawler/status");
+
 export default api;

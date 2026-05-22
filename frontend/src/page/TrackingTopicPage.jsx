@@ -11,6 +11,10 @@ import {
   untrackTopic,
 } from "../services/API";
 import { useFavorites } from "../contexts/FavoritesContext";
+import {
+  getPaperUpdateTopicId,
+  subscribePaperDataUpdated,
+} from "../utils/paperRefreshEvent";
 
 function extractTopics(response) {
   return response.data?.data?.topics ?? response.data?.topics ?? response.data ?? [];
@@ -34,6 +38,7 @@ export default function TrackingTopics() {
   // Phân trang
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [refreshTick, setRefreshTick] = useState(0);
   const itemsPerPage = 5;
   const selectedTopicIdFromQuery = searchParams.get("topic_id");
 
@@ -68,6 +73,22 @@ export default function TrackingTopics() {
   }, []);
 
   useEffect(() => {
+    return subscribePaperDataUpdated((event) => {
+      const updatedTopicId = getPaperUpdateTopicId(event.detail);
+
+      if (
+        selectedTopic?.id &&
+        updatedTopicId &&
+        String(updatedTopicId) !== String(selectedTopic.id)
+      ) {
+        return;
+      }
+
+      setRefreshTick((value) => value + 1);
+    });
+  }, [selectedTopic?.id]);
+
+  useEffect(() => {
     if (!selectedTopic) return;
 
     const fetchPapers = async () => {
@@ -95,7 +116,7 @@ export default function TrackingTopics() {
     };
 
     fetchPapers();
-  }, [selectedTopic, currentPage]);
+  }, [selectedTopic, currentPage, refreshTick]);
 
   const handleTopicSelect = (topic) => {
     setSelectedTopic(topic);

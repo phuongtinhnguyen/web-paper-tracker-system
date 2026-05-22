@@ -20,6 +20,7 @@ import {
   submitRating,
   getMyRating,
 } from "../services/API";
+import PaperCard from "../components/PaperCard";
 
 export default function PaperDetailPage() {
   const { id } = useParams();
@@ -307,7 +308,7 @@ export default function PaperDetailPage() {
           {/* Abstract */}
           <div className="mb-8">
             <h3 className="text-sm font-bold text-gray-600 uppercase tracking-widest mb-3">
-              Tóm tắt nội dung (Abstract)
+              Tổng quan bài báo
             </h3>
             <p className="text-gray-700 leading-relaxed text-justify whitespace-pre-line">
               {paper.abstract}
@@ -339,23 +340,15 @@ export default function PaperDetailPage() {
           <h3 className="text-sm font-bold text-gray-600 uppercase tracking-widest mb-3">
             Bài báo liên quan
           </h3>
-          <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {relatedPapers.length > 0 ? (
               relatedPapers.map((related) => (
-                <div
+                <PaperCard
                   key={related.id}
-                  className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                >
-                  <h4 className="font-bold text-green-600 mb-2">
-                    {related.title}
-                  </h4>
-                  <p className="text-sm text-gray-500 mb-2">
-                    {Array.isArray(related.authors)
-                      ? related.authors.join(", ")
-                      : related.authors}
-                  </p>
-                  <p className="text-gray-700 text-sm">{related.abstract}</p>
-                </div>
+                  paper={related}
+                  showActions={false}
+                  clickableCard
+                />
               ))
             ) : (
               <p className="text-gray-500">Không có bài báo liên quan.</p>

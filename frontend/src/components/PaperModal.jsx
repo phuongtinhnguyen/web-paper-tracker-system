@@ -41,7 +41,7 @@ export default function PaperModal({ isOpen, onClose, paper, authors }) {
         {/* Nội dung tóm tắt */}
         <div className="p-8 max-h-[60vh] overflow-y-auto">
           <h4 className="text-xs font-bold text-green-600 uppercase tracking-[0.2em] mb-4">
-            Tóm tắt nội dung
+            {paper.summary ? "Tóm tắt" : "Tổng quan bài báo"}
           </h4>
           <p className="text-gray-600 leading-relaxed text-base text-justify whitespace-pre-line">
             {paper.summary ||

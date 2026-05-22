@@ -7,6 +7,8 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
 } from "../services/API";
+import { subscribeNotificationsUpdated } from "../utils/notificationRefreshEvent";
+import { notifyPaperDataUpdated } from "../utils/paperRefreshEvent";
 
 export default function NotificationBell() {
   const navigate = useNavigate();
@@ -50,21 +52,40 @@ export default function NotificationBell() {
   };
 
   useEffect(() => {
-    fetchNotifications({ silent: true });
+    const initialFetchTimer = window.setTimeout(() => {
+      fetchNotifications({ silent: true });
+    }, 0);
+    const unsubscribeNotificationsUpdated = subscribeNotificationsUpdated(() => {
+      fetchNotifications({ silent: true });
+    });
 
     const stream = createNotificationStream();
 
     if (!stream) {
-      return undefined;
+      return () => {
+        window.clearTimeout(initialFetchTimer);
+        unsubscribeNotificationsUpdated();
+      };
     }
 
-    const handleNotification = () => {
+    const handleNotification = (event) => {
+      const payload = (() => {
+        try {
+          return JSON.parse(event.data || "{}");
+        } catch {
+          return {};
+        }
+      })();
+
       fetchNotifications({ silent: true });
+      notifyPaperDataUpdated(payload.notification || payload);
     };
 
     stream.addEventListener("notification", handleNotification);
 
     return () => {
+      window.clearTimeout(initialFetchTimer);
+      unsubscribeNotificationsUpdated();
       stream.removeEventListener("notification", handleNotification);
       stream.close();
     };

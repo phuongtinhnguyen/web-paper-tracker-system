@@ -90,13 +90,28 @@ def build_services(args):
             str(args.crawler_sleep_seconds),
             "--summary-batch-size",
             str(args.summary_batch_size),
+            "--related-threshold",
+            str(args.related_threshold),
+            "--related-limit",
+            str(args.related_limit),
+            "--trend-recent-days",
+            str(args.trend_recent_days),
         ]
 
-        if not args.pipeline_run_immediately:
+        if args.no_pipeline_run_immediately:
             pipeline_cmd.append("--no-run-immediately")
 
         if args.skip_summary:
             pipeline_cmd.append("--skip-summary")
+
+        if args.skip_ai_trends:
+            pipeline_cmd.append("--skip-ai-trends")
+
+        if args.skip_crawler:
+            pipeline_cmd.append("--skip-crawler")
+
+        if args.skip_trends:
+            pipeline_cmd.append("--skip-trends")
 
         services.append(
             {
@@ -179,11 +194,30 @@ def parse_args():
     parser.add_argument("--ai-host", default="0.0.0.0")
     parser.add_argument("--ai-port", type=int, default=8001)
     parser.add_argument("--pipeline-interval-hours", type=float, default=1)
-    parser.add_argument("--pipeline-run-immediately", action="store_true")
-    parser.add_argument("--crawler-max-results", type=int, default=15)
-    parser.add_argument("--crawler-sleep-seconds", type=int, default=3)
+    parser.add_argument(
+        "--no-pipeline-run-immediately",
+        action="store_true",
+        help="Start database scheduler but do not run the first pipeline immediately.",
+    )
+    parser.add_argument(
+        "--pipeline-run-immediately",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument("--crawler-max-results", type=int, default=5)
+    parser.add_argument("--crawler-sleep-seconds", type=int, default=10)
     parser.add_argument("--summary-batch-size", type=int, default=20)
+    parser.add_argument("--related-threshold", type=float, default=0.20)
+    parser.add_argument("--related-limit", type=int, default=5)
+    parser.add_argument("--trend-recent-days", type=int, default=7)
     parser.add_argument("--skip-summary", action="store_true")
+    parser.add_argument("--skip-ai-trends", action="store_true")
+    parser.add_argument(
+        "--skip-crawler",
+        action="store_true",
+        help="Skip only arXiv crawling; other pipeline steps still run on existing DB papers.",
+    )
+    parser.add_argument("--skip-trends", action="store_true")
     return parser.parse_args()
 
 

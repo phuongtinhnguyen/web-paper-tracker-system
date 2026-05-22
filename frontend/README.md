@@ -7,13 +7,13 @@ Frontend hiện có các màn hình/chức năng:
 | Nhóm | Trạng thái FE | Ghi chú tích hợp BE |
 | --- | --- | --- |
 | Auth | Có Login/Register/Settings | BE đã có register/login/me/profile/change-password |
-| Dashboard papers | Có danh sách, filter, search, pagination | BE đã có `/papers` và `/papers/search` |
-| Topics | Có quản lý topic và topic đang theo dõi | BE đã có `/topics` và `/user-topics` |
+| Dashboard papers | Có danh sách, filter, search, pagination, nút tải lại 5 paper mới nhất | BE đã có `/papers`, `/papers/search` và `/crawler/run` |
+| Topics | Có trang xem topic, trang chủ đề đang theo dõi và nút tải lại theo topic | BE đã có `/topics`, `/user-topics` và `/crawler/run` |
 | Favorites | Có lưu/bỏ lưu/lấy danh sách yêu thích | BE đã có `/favorites` và `/papers/favorite/:id` |
-| Paper detail | Có chi tiết, summary fallback, related, matching, rating UI | BE mới có detail/summary/favorite; related/matching/rating chưa có |
-| History | Có page lịch sử đọc | FE đang gọi `/history`, BE chưa có API |
-| Notifications | Có `NotificationBell` trong header | BE đã có `/notifications`, mark-read APIs và SSE `/notifications/stream` |
-| Trend | Có page `/trend` | FE đang gọi `/stats/topics/trends`, BE chưa có API |
+| Paper detail | Có chi tiết, summary fallback, related, matching, rating UI | BE đã có detail/summary/favorite/related/matching/rating |
+| History | Có page lịch sử đọc | BE đã có `/history` |
+| Notifications | Có `NotificationBell` trong header, auto refresh danh sách paper khi SSE báo paper mới | BE đã có `/notifications`, mark-read APIs và SSE `/notifications/stream` |
+| Trend | Có page `/trend` | BE đã có `/stats/topics/trends` |
 
 ## 2. Cấu Trúc File Hiện Tại
 
@@ -27,8 +27,12 @@ frontend/
     |-- main.jsx
     |-- services/
     |   |-- API.js
+    |-- utils/
+    |   |-- notificationRefreshEvent.js
+    |   |-- paperRefreshEvent.js
     |-- contexts/
     |   |-- FavoritesContext.jsx
+    |   |-- CrawlerContext.jsx
     |-- components/
     |   |-- MainLayout.jsx
     |   |-- Sidebar.jsx
@@ -86,17 +90,12 @@ npm run build
 
 ## 5. Ghi Chú Tích Hợp API
 
-Các API FE đang gọi nhưng BE chưa implement:
+Các API FE đang gọi chính hiện đã có route Backend tương ứng: papers, search, topics, user-topics, favorites, history, manual crawler refresh, related/matching papers, ratings, notifications và topic trends.
 
-```txt
-GET    /api/v1/history
-DELETE /api/v1/history/:paperId
-DELETE /api/v1/history
-GET    /api/v1/papers/:id/related
-GET    /api/v1/papers/:id/matches
-GET    /api/v1/papers/:id/rating/me
-POST   /api/v1/papers/:id/rating
-GET    /api/v1/stats/topics/trends
-```
+Các điểm còn để sau:
 
-Các phần này hiện có UI/call ở FE để chuẩn bị tích hợp, nhưng khi chạy với BE hiện tại có thể trả `404` hoặc fail âm thầm.
+- `forgotPassword()` đang được chuẩn bị sẵn trong `API.js`, nhưng UI hiện tại chưa gọi API này và Backend chưa implement reset password thật.
+- Backend đã có `PUT /user-topics/:topicId`, nhưng Frontend hiện chỉ thêm/bỏ theo dõi chủ đề, chưa có UI sửa chủ đề theo dõi.
+- Notification realtime đã cập nhật chuông thông báo qua SSE; Dashboard, Topics, Tracking Topics và Trend Page tự refresh danh sách paper/topic khi crawler có paper mới.
+- Manual refresh dùng `CrawlerContext` và `GET /crawler/status`, nên Backend nhận job rồi trả response ngay, còn FE giữ trạng thái đang tải lại khi người dùng đổi page rồi quay lại. Backend có cooldown mặc định 20 giây để tránh spam arXiv; Dashboard/Topics hiển thị countdown chờ mà không ẩn danh sách paper.
+- Nút tải lại ở Dashboard và theo topic không hiện thông báo hoàn tất trực tiếp trên page; nếu crawler thêm được paper mới, notification được lưu vào DB và hiện trong chuông thông báo của user vừa bấm.

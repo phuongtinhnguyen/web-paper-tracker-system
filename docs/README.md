@@ -15,7 +15,7 @@ ai/README.md           # Hướng dẫn AI summary/duplicate checker
 
 Trạng thái hiện tại:
 
-- Backend đã có core APIs.
-- Database đã có cả schema core/advanced, pipeline tạo notification gộp theo topic và gọi Backend webhook để push SSE.
-- Frontend đã dựng một số UI/call cho advanced APIs.
-- Một số advanced APIs chưa có route Backend Express, gồm history, trends, related/matching papers và ratings. Notification APIs đã có ở Backend.
+- Backend đã có core APIs và các API mở rộng đang được Frontend dùng: manual crawler refresh, history, related papers, duplicate/matching papers, ratings, notifications, notification SSE và topic trends.
+- Database đã có cả schema core/advanced, pipeline tạo notification gộp theo topic, related papers, duplicate matching, summary batch, rating average và topic trend bằng AI/fallback.
+- Frontend đã tích hợp các API chính với Backend: dashboard, search, topics, manual refresh, favorites, history, paper detail, related/matching, rating, notifications và trend.
+- Phần còn thiếu chính hiện tại: forgot/reset password thật, UI sửa chủ đề theo dõi ở Frontend, notes cho paper interaction, dashboard thống kê theo chủ đề và tài liệu sơ đồ ERD.

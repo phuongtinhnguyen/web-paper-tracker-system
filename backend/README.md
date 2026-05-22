@@ -24,20 +24,22 @@ Backend chỉ query database. Schema/migration do thư mục `database/` quản 
 | Auth | Đăng ký, đăng nhập, lấy thông tin user từ JWT |
 | Topics | Lấy tất cả topic có trong DB |
 | User Topics | Theo dõi, đổi, bỏ theo dõi topic của user |
-| Papers | Lấy danh sách paper, lọc theo topic/filter, search, xem chi tiết |
+| Papers | Lấy danh sách paper, lọc theo topic/filter, search, xem chi tiết, paper liên quan và paper trùng/gần giống |
 | Paper Summary | Tóm tắt on-demand khi `papers.summary` đang `NULL` |
 | Favorites | Lưu, bỏ lưu và lấy danh sách paper yêu thích |
+| History | Tự lưu lịch sử khi user mở chi tiết paper, lấy/xóa lịch sử đọc |
+| Paper Ratings | Chấm điểm paper, lấy điểm của user và cập nhật điểm trung bình |
 | Notifications | Lấy thông báo, đánh dấu đã đọc, đánh dấu tất cả đã đọc |
+| Stats | Lấy danh sách topic xu hướng từ `topics.trending` |
+| Crawler | Trigger crawler thủ công cho nút tải lại ở Dashboard/Topic, có trạng thái chạy nền và cooldown |
 | Error handling | Chuẩn hóa response lỗi |
 | Validation | Validate request bằng Zod |
 
-Các nhóm planned/advanced:
+Ghi chú trạng thái:
 
-- Trigger crawler thủ công.
-- Related papers.
-- Duplicate/matching papers.
-- Topic trends.
-- Paper ratings.
+- Không còn nhóm FE core nào đang gọi nhưng BE chưa có route chính.
+- Manual crawler đã implement qua `POST /api/v1/crawler/run` và `GET /api/v1/crawler/status`.
+- Các phần còn để sau chủ yếu là reset password thật, notes của paper interaction và các báo cáo/thống kê bổ sung nếu cần.
 
 ---
 
@@ -64,6 +66,7 @@ backend/
     |   |-- auth.middleware.js
     |   |-- error.middleware.js
     |   |-- notFound.middleware.js
+    |   |-- optionalAuth.middleware.js
     |   |-- validate.middleware.js
     |-- modules/
     |   |-- auth/
@@ -81,6 +84,17 @@ backend/
     |   |-- health/
     |   |   |-- health.controller.js
     |   |   |-- health.routes.js
+    |   |-- crawler/
+    |   |   |-- crawler.controller.js
+    |   |   |-- crawler.routes.js
+    |   |   |-- crawler.service.js
+    |   |   |-- crawler.validation.js
+    |   |-- history/
+    |   |   |-- history.controller.js
+    |   |   |-- history.repository.js
+    |   |   |-- history.routes.js
+    |   |   |-- history.service.js
+    |   |   |-- history.validation.js
     |   |-- internal/
     |   |   |-- internal.controller.js
     |   |   |-- internal.middleware.js
@@ -99,6 +113,12 @@ backend/
     |   |   |-- paper.routes.js
     |   |   |-- paper.service.js
     |   |   |-- paper.validation.js
+    |   |-- stats/
+    |   |   |-- stats.controller.js
+    |   |   |-- stats.repository.js
+    |   |   |-- stats.routes.js
+    |   |   |-- stats.service.js
+    |   |   |-- stats.validation.js
     |   |-- topics/
     |       |-- topic.controller.js
     |       |-- topic.repository.js
@@ -214,15 +234,31 @@ backend/.env
 Nội dung mẫu:
 
 ```env
-NODE_ENV=development
-PORT=8000
+# Required: Backend cannot start without these values.
 DATABASE_URL=postgresql://<username>:<password>@<host>/<dbname>?sslmode=require
 JWT_SECRET=change_me
+
+# Optional: app/server defaults.
+# NODE_ENV defaults to development.
+# PORT defaults to 8000.
+# JWT_EXPIRES_IN defaults to 7d.
+# AI_SERVICE_URL defaults to http://localhost:8001.
+NODE_ENV=development
+PORT=8000
 JWT_EXPIRES_IN=7d
 AI_SERVICE_URL=http://localhost:8001
-ARXIV_MAX_RESULTS=20
-CRAWLER_CRON=*/60 * * * *
-INTERNAL_API_SECRET=change_me
+
+# Optional: required only if database pipeline pushes realtime notifications to Backend.
+# Must match BACKEND_INTERNAL_SECRET in database/.env.
+INTERNAL_API_SECRET=change_me_internal_secret
+
+# Optional: manual crawler settings.
+# DATABASE_PIPELINE_PYTHON can be blank; Backend will prefer database/.venv automatically.
+# MANUAL_CRAWLER_TIMEOUT_MS defaults to 300000.
+# MANUAL_CRAWLER_COOLDOWN_MS defaults to 20000.
+DATABASE_PIPELINE_PYTHON=
+MANUAL_CRAWLER_TIMEOUT_MS=300000
+MANUAL_CRAWLER_COOLDOWN_MS=20000
 ```
 
 Không commit file `.env`.
@@ -231,15 +267,16 @@ Không commit file `.env`.
 
 | Variable | Required | Mô tả |
 | --- | --- | --- |
-| `NODE_ENV` | No | `development` hoặc `production` |
-| `PORT` | No | Port backend, default `8000` |
 | `DATABASE_URL` | Yes | PostgreSQL/Neon connection string |
 | `JWT_SECRET` | Yes | Secret dùng để ký JWT |
+| `NODE_ENV` | No | `development` hoặc `production`, default `development` |
+| `PORT` | No | Port backend, default `8000` |
 | `JWT_EXPIRES_IN` | No | Thời hạn JWT, default `7d` |
 | `AI_SERVICE_URL` | No | URL FastAPI AI service dùng cho summary on-demand, default `http://localhost:8001` |
-| `ARXIV_MAX_RESULTS` | No | Planned crawler config |
-| `CRAWLER_CRON` | No | Planned crawler config |
 | `INTERNAL_API_SECRET` | Yes, nếu dùng DB pipeline push notification | Secret để bảo vệ API nội bộ `/api/v1/internal/notifications/push` |
+| `DATABASE_PIPELINE_PYTHON` | No | Python command/path dùng cho `POST /crawler/run`; nếu bỏ trống Backend ưu tiên `database/.venv` |
+| `MANUAL_CRAWLER_TIMEOUT_MS` | No | Timeout cho manual crawler, default `300000` ms |
+| `MANUAL_CRAWLER_COOLDOWN_MS` | No | Cooldown sau mỗi manual crawler để tránh spam arXiv, default `20000` ms |
 
 ### 4.4. Yêu Cầu Database
 
@@ -251,7 +288,14 @@ topics
 user_topics
 papers
 favorites
+related_papers
+matching_papers
+notifications
+user_notifications
+user_paper_interactions
 ```
+
+Các cột advanced đang được Backend dùng gồm `topics.trending` và `papers.avg_rating`.
 
 Nếu DB chưa có schema, chạy migration ở thư mục `database/`, không chạy trong backend.
 
@@ -447,44 +491,45 @@ Error:
 
 ### 6.3. API Overview
 
-| Nhóm | Method | Endpoint | Mục đích | Trạng thái |
-| --- | --- | --- | --- | --- |
-| Health | GET | `/api/v1/health` | Kiểm tra server Express | Implemented |
-| Health | GET | `/api/v1/health/db` | Kiểm tra kết nối database | Implemented |
-| Auth | POST | `/api/v1/auth/register` | Đăng ký tài khoản | Implemented |
-| Auth | POST | `/api/v1/auth/login` | Đăng nhập và lấy access token | Implemented |
-| Auth | GET | `/api/v1/auth/me` | Lấy thông tin user từ token | Implemented |
-| Auth | PUT | `/api/v1/auth/profile` | Cập nhật username/profile user đang login | Implemented |
-| Auth | PUT | `/api/v1/auth/change-password` | Đổi mật khẩu user đang login | Implemented |
-| Topics | GET | `/api/v1/topics` | Lấy tất cả topic trong DB | Implemented |
-| User Topics | GET | `/api/v1/user-topics` | Lấy topic user đang theo dõi | Implemented |
-| User Topics | POST | `/api/v1/user-topics` | Theo dõi topic bằng `topic_id` | Implemented |
-| User Topics | PUT | `/api/v1/user-topics/:id` | Đổi topic đang theo dõi | Implemented |
-| User Topics | DELETE | `/api/v1/user-topics/:id` | Bỏ theo dõi topic | Implemented |
-| Papers | GET | `/api/v1/papers?page=1&limit=5&filter=all` | Lấy tất cả paper có phân trang | Implemented |
-| Papers | GET | `/api/v1/papers?page=1&limit=5&filter=recent` | Lấy paper gần đây | Implemented |
-| Papers | GET | `/api/v1/papers?page=1&limit=5&filter=2days` | Lấy paper trong 2 ngày gần đây | Implemented |
-| Papers | GET | `/api/v1/papers?page=1&limit=5&topic_id=1` | Lọc paper theo `papers.topic_id` | Implemented |
-| Papers | GET | `/api/v1/papers/search?q=keyword&page=1&limit=10` | Search theo title, abstract, authors | Implemented |
-| Papers | GET | `/api/v1/papers/:id` | Lấy chi tiết paper | Implemented |
-| Papers | POST | `/api/v1/papers/:id/summarize` | Tóm tắt paper on-demand khi `summary` đang `NULL` | Implemented |
-| Favorites | GET | `/api/v1/favorites` | Lấy paper yêu thích | Implemented |
-| Favorites | POST | `/api/v1/papers/favorite/:id` | Lưu paper yêu thích | Implemented |
-| Favorites | DELETE | `/api/v1/papers/favorite/:id` | Bỏ lưu paper yêu thích | Implemented |
-| History | GET | `/api/v1/history?page=1&limit=5` | Lấy lịch sử đọc từ `user_paper_interactions` | Planned Core/FE calling |
-| History | DELETE | `/api/v1/history/:paperId` | Xóa một mục lịch sử đọc | Planned Core/FE calling |
-| History | DELETE | `/api/v1/history` | Xóa toàn bộ lịch sử đọc | Planned Core/FE calling |
-| Crawler | POST | `/api/v1/crawler/run` | Trigger crawler thủ công | Planned Core/Internal |
-| Related | GET | `/api/v1/papers/:id/related?limit=5` | Lấy paper liên quan cho trang chi tiết | Planned Core/FE calling |
-| Duplicate | GET | `/api/v1/papers/:id/matches?limit=5` | Lấy paper trùng/gần giống | Advanced/FE calling |
-| Notifications | GET | `/api/v1/notifications` | Lấy thông báo | Implemented |
-| Notifications | GET | `/api/v1/notifications/stream` | SSE stream nhận notification realtime | Implemented |
-| Notifications | PATCH | `/api/v1/notifications/:id/read` | Đánh dấu thông báo đã đọc | Implemented |
-| Notifications | PATCH | `/api/v1/notifications/read-all` | Đánh dấu tất cả thông báo đã đọc | Implemented |
-| Internal | POST | `/api/v1/internal/notifications/push` | DB pipeline báo cho BE đẩy notification qua SSE | Implemented/Internal |
-| Stats | GET | `/api/v1/stats/topics/trends` | Lấy topic xu hướng | Advanced/FE calling |
-| Ratings | POST | `/api/v1/papers/:id/rating` | Lưu điểm paper | Advanced/FE calling |
-| Ratings | GET | `/api/v1/papers/:id/rating/me` | Lấy điểm paper của user | Advanced/FE calling |
+| Nhóm | Method | Endpoint | Auth | Mục đích | Trạng thái |
+| --- | --- | --- | --- | --- | --- |
+| Health | GET | `/api/v1/health` | Public | Kiểm tra server Express | Implemented |
+| Health | GET | `/api/v1/health/db` | Public | Kiểm tra kết nối database | Implemented |
+| Auth | POST | `/api/v1/auth/register` | Public | Đăng ký tài khoản | Implemented |
+| Auth | POST | `/api/v1/auth/login` | Public | Đăng nhập và lấy access token | Implemented |
+| Auth | GET | `/api/v1/auth/me` | Bearer token | Lấy thông tin user từ token | Implemented |
+| Auth | PUT | `/api/v1/auth/profile` | Bearer token | Cập nhật username/profile user đang login | Implemented |
+| Auth | PUT | `/api/v1/auth/change-password` | Bearer token | Đổi mật khẩu user đang login | Implemented |
+| Topics | GET | `/api/v1/topics` | Bearer token | Lấy tất cả topic trong DB | Implemented |
+| User Topics | GET | `/api/v1/user-topics` | Bearer token | Lấy topic user đang theo dõi | Implemented |
+| User Topics | POST | `/api/v1/user-topics` | Bearer token | Theo dõi topic bằng `topic_id` | Implemented |
+| User Topics | PUT | `/api/v1/user-topics/:id` | Bearer token | Đổi topic đang theo dõi | Implemented |
+| User Topics | DELETE | `/api/v1/user-topics/:id` | Bearer token | Bỏ theo dõi topic | Implemented |
+| Papers | GET | `/api/v1/papers?page=1&limit=5&filter=all` | Optional token | Lấy tất cả paper có phân trang | Implemented |
+| Papers | GET | `/api/v1/papers?page=1&limit=5&filter=recent` | Optional token | Lấy paper gần đây | Implemented |
+| Papers | GET | `/api/v1/papers?page=1&limit=5&filter=2days` | Optional token | Lấy paper trong 2 ngày gần đây | Implemented |
+| Papers | GET | `/api/v1/papers?page=1&limit=5&topic_id=1` | Optional token | Lọc paper theo `papers.topic_id` | Implemented |
+| Papers | GET | `/api/v1/papers/search?q=keyword&page=1&limit=10` | Optional token | Search theo title, abstract, authors | Implemented |
+| Papers | GET | `/api/v1/papers/:id` | Optional token | Lấy chi tiết paper; nếu có token thì tự lưu lịch sử đọc | Implemented |
+| Papers | POST | `/api/v1/papers/:id/summarize` | Bearer token | Tóm tắt paper on-demand khi `summary` đang `NULL` | Implemented |
+| Related | GET | `/api/v1/papers/:id/related?limit=5` | Public | Lấy paper liên quan cho trang chi tiết, fallback cùng topic nếu chưa có dữ liệu related | Implemented |
+| Duplicate | GET | `/api/v1/papers/:id/matches?limit=5` | Public | Lấy paper trùng/gần giống từ `matching_papers` | Implemented |
+| Ratings | POST | `/api/v1/papers/:id/rating` | Bearer token | Lưu điểm paper và cập nhật điểm trung bình | Implemented |
+| Ratings | GET | `/api/v1/papers/:id/rating/me` | Bearer token | Lấy điểm paper của user | Implemented |
+| Favorites | GET | `/api/v1/favorites?page=1&limit=5` | Bearer token | Lấy paper yêu thích | Implemented |
+| Favorites | POST | `/api/v1/papers/favorite/:id` | Bearer token | Lưu paper yêu thích | Implemented |
+| Favorites | DELETE | `/api/v1/papers/favorite/:id` | Bearer token | Bỏ lưu paper yêu thích | Implemented |
+| History | GET | `/api/v1/history?page=1&limit=5` | Bearer token | Lấy lịch sử đọc từ `user_paper_interactions` | Implemented |
+| History | DELETE | `/api/v1/history` | Bearer token | Xóa toàn bộ lịch sử đọc | Implemented |
+| History | DELETE | `/api/v1/history/:paperId` | Bearer token | Xóa một mục lịch sử đọc | Implemented |
+| Notifications | GET | `/api/v1/notifications?page=1&limit=10&unread_only=false` | Bearer token | Lấy thông báo | Implemented |
+| Notifications | GET | `/api/v1/notifications/stream` | Bearer token hoặc `?token=` | SSE stream nhận notification realtime | Implemented |
+| Notifications | PATCH | `/api/v1/notifications/read-all` | Bearer token | Đánh dấu tất cả thông báo đã đọc | Implemented |
+| Notifications | PATCH | `/api/v1/notifications/:id/read` | Bearer token | Đánh dấu thông báo đã đọc | Implemented |
+| Internal | POST | `/api/v1/internal/notifications/push` | Internal secret | DB pipeline báo cho BE đẩy notification qua SSE | Implemented/Internal |
+| Stats | GET | `/api/v1/stats/topics/trends?limit=10` | Public | Lấy topic xu hướng từ `topics.trending` | Implemented |
+| Crawler | GET | `/api/v1/crawler/status` | Bearer token | Lấy trạng thái crawler thủ công đang chạy để FE giữ trạng thái khi đổi page | Implemented |
+| Crawler | POST | `/api/v1/crawler/run` | Bearer token | Trigger crawler thủ công; body có `max_results`, optional `topic_id` | Implemented |
 
 ### 6.4. Health APIs
 
@@ -855,8 +900,11 @@ Response mẫu:
       "summary": "Bài báo đề xuất...",
       "authors": ["Author A", "Author B"],
       "published_date": "2026-05-12",
+      "created_at": "2026-05-22T10:00:00.000Z",
       "pdf_url": "https://arxiv.org/pdf/2401.00001",
-      "topic_id": 1
+      "topic_id": 1,
+      "is_read": false,
+      "is_new": true
     }
   ],
   "pagination": {
@@ -867,6 +915,8 @@ Response mẫu:
   }
 }
 ```
+
+Nếu request có Bearer token, Backend trả thêm `is_read` và `is_new` theo user hiện tại. FE dùng `is_new = true` và `is_read = false` để hiển thị badge `Mới` trên paper card.
 
 #### 6.7.2. GET /api/v1/papers/search
 
@@ -905,8 +955,11 @@ Response mẫu:
 
 #### 6.7.3. GET /api/v1/papers/:id
 
+Nếu request có `Authorization: Bearer <access_token>`, Backend sẽ tự lưu paper này vào lịch sử đọc của user.
+
 ```http
 GET /api/v1/papers/1
+# Authorization: Bearer <access_token>
 ```
 
 Response mẫu:
@@ -1058,43 +1111,157 @@ Response mẫu:
 }
 ```
 
-### 6.9. Internal/Advanced APIs
+### 6.9. History APIs
 
-Các API dưới đây là planned/advanced contract cho FE/dev tham khảo. Riêng nhóm `notifications` đã được implement; các API còn lại cần tạo thêm route/controller/service/repository khi làm thật.
+Các API lịch sử đọc đều cần `Authorization: Bearer <access_token>`.
+
+Backend tự ghi lịch sử khi user đang đăng nhập mở chi tiết paper qua `GET /api/v1/papers/:id`. FE không cần gọi riêng API tạo lịch sử.
+
+#### 6.9.1. GET /api/v1/history
+
+Lấy danh sách paper user đã đọc từ bảng `user_paper_interactions`.
+
+Query params:
+
+```txt
+page   optional, default 1
+limit  optional, default 5, max 50
+search optional, search theo title/abstract/authors
+```
+
+Cách gọi:
+
+```http
+GET /api/v1/history?page=1&limit=5&search=machine
+Authorization: Bearer <access_token>
+```
+
+Response mẫu:
+
+```json
+{
+  "success": true,
+  "message": "Get reading history successfully",
+  "data": [
+    {
+      "id": 1,
+      "arxiv_id": "2605.10938v1",
+      "title": "ELF: Embedded Language...",
+      "abstract": "Diffusion and flow-based...",
+      "summary": "Paper này trình bày...",
+      "authors": ["Keya Hu", "Lintu Qiu"],
+      "published_date": "2026-05-11T17:59:29.000Z",
+      "pdf_url": "http://arxiv.org/abs/2605.10938v1",
+      "avg_rating": 4.5,
+      "topic_id": 1,
+      "read_at": "2026-05-21T02:55:00.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 5,
+    "total": 1,
+    "total_pages": 1
+  }
+}
+```
+
+#### 6.9.2. DELETE /api/v1/history/:paperId
+
+Xóa một paper khỏi lịch sử đọc của user. Backend không xóa row DB, chỉ set `user_paper_interactions.is_read = false` để vẫn giữ được rating/notes nếu có.
+
+Cách gọi:
+
+```http
+DELETE /api/v1/history/1
+Authorization: Bearer <access_token>
+```
+
+Response mẫu:
+
+```json
+{
+  "success": true,
+  "message": "Remove reading history item successfully",
+  "data": {
+    "paper_id": 1,
+    "is_read": false
+  }
+}
+```
+
+#### 6.9.3. DELETE /api/v1/history
+
+Xóa toàn bộ lịch sử đọc của user bằng cách set các row `is_read = false`.
+
+Cách gọi:
+
+```http
+DELETE /api/v1/history
+Authorization: Bearer <access_token>
+```
+
+Response mẫu:
+
+```json
+{
+  "success": true,
+  "message": "Clear reading history successfully",
+  "data": {
+    "removed_count": 3
+  }
+}
+```
+
+### 6.10. Internal/Advanced APIs
+
+Các API dưới đây là nhóm internal/advanced hiện đã có route Backend tương ứng. FE đang dùng các API crawler, related/matching, notifications, stats và ratings trong luồng hiện tại.
 
 | Method | Endpoint | Ghi chú |
 | --- | --- | --- |
-| POST | `/api/v1/crawler/run` | Planned internal/admin |
-| GET | `/api/v1/history?page=1&limit=5` | Planned, FE đang gọi; dùng `user_paper_interactions` |
-| DELETE | `/api/v1/history/:paperId` | Planned, FE đang gọi; dùng `user_paper_interactions` |
-| DELETE | `/api/v1/history` | Planned, FE đang gọi; dùng `user_paper_interactions` |
-| GET | `/api/v1/papers/:id/related?limit=5` | Planned soon, FE đang gọi; DB đã có `related_papers` |
-| GET | `/api/v1/papers/:id/matches?limit=5` | Advanced, FE đang gọi; DB đã có `matching_papers` |
+| POST | `/api/v1/crawler/run` | Implemented; FE dùng cho nút refresh Dashboard/Topic |
+| GET | `/api/v1/crawler/status` | Implemented; FE dùng để giữ trạng thái đang tải lại khi đổi page |
+| GET | `/api/v1/papers/:id/related?limit=5` | Implemented; đọc `related_papers`, fallback cùng topic |
+| GET | `/api/v1/papers/:id/matches?limit=5` | Implemented; đọc `matching_papers` |
 | GET | `/api/v1/notifications` | Implemented, FE đang gọi; đọc từ `notifications` và `user_notifications` |
 | GET | `/api/v1/notifications/stream` | Implemented; SSE stream nhận notification realtime |
 | PATCH | `/api/v1/notifications/:id/read` | Implemented, FE đang gọi; cập nhật `user_notifications.is_read` |
 | PATCH | `/api/v1/notifications/read-all` | Implemented, FE đang gọi; cập nhật tất cả notification của user |
 | POST | `/api/v1/internal/notifications/push` | Implemented internal; DB pipeline gọi để BE push SSE |
-| GET | `/api/v1/stats/topics/trends` | Advanced, FE đang gọi; DB đã có `topics.trending` |
-| POST | `/api/v1/papers/:id/rating` | Advanced, FE đang gọi; dùng `user_paper_interactions.rating` |
-| GET | `/api/v1/papers/:id/rating/me` | Advanced, FE đang gọi; dùng `user_paper_interactions.rating` |
+| GET | `/api/v1/stats/topics/trends` | Implemented, FE đang gọi; đọc `topics.trending` |
+| POST | `/api/v1/papers/:id/rating` | Implemented; lưu rating và cập nhật `papers.avg_rating` |
+| GET | `/api/v1/papers/:id/rating/me` | Implemented; lấy rating của user đang login |
 
-#### 6.9.1. POST /api/v1/crawler/run
+#### 6.10.1. POST /api/v1/crawler/run
 
-Trigger crawler thủ công cho dev/admin. API này không nên mở public cho user thường.
+Trigger crawler thủ công. Frontend đang dùng API này cho nút refresh ở Dashboard và nút refresh theo từng topic.
+
+Nếu không truyền `topic_id`, crawler lấy `max_results` paper mới nhất trong 10 topic mặc định rồi tự gán topic bằng keyword/title/abstract, fallback theo `primary_category` của arXiv. Nếu topic chưa có trong bảng `topics`, pipeline sẽ tạo topic mới trước khi lưu paper. Nếu có truyền `topic_id`, crawler chỉ refresh riêng topic đó. `max_results` mặc định là `5`.
+
+Backend sẽ tạo job nền chạy `database/run_hourly_pipeline.py --run-once` rồi trả response ngay với HTTP `202 Accepted`. Mặc định job bỏ batch summary và bỏ AI trend để thao tác refresh nhanh hơn. Sau khi crawler thêm paper mới, pipeline vẫn tạo notification, push SSE, cập nhật related/matching và topic trend fallback. Với manual refresh, user vừa bấm nút tải lại được truyền xuống pipeline bằng `--trigger-user-id`, nên nếu có paper mới thì thông báo sẽ nằm trong chuông của user đó.
 
 Cách gọi:
 
 ```http
 POST /api/v1/crawler/run
-Authorization: Bearer <admin_access_token>
+Authorization: Bearer <access_token>
 Content-Type: application/json
 
 {
-  "max_results_per_topic": 15,
-  "summary_batch_size": 20,
-  "run_summary": true,
-  "run_duplicate_check": true
+  "max_results": 5
+}
+```
+
+Chỉ cào một topic cụ thể:
+
+```http
+POST /api/v1/crawler/run
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "topic_id": 1,
+  "max_results": 5
 }
 ```
 
@@ -1103,25 +1270,84 @@ Response mẫu:
 ```json
 {
   "success": true,
-  "message": "Crawler run successfully",
+  "message": "Crawler job accepted",
   "data": {
-    "fetched_paper_count": 120,
-    "new_paper_count": 18,
-    "skipped_existing_count": 102,
-    "summarized_count": 18,
-    "duplicate_check": {
-      "checked_count": 18,
-      "matched_count": 2
-    }
+    "scope": "latest",
+    "topic_id": null,
+    "max_results": 5,
+    "is_running": true,
+    "accepted": true
   }
 }
 ```
 
-#### 6.9.2. GET /api/v1/papers/:id/related?limit=5
+Nếu crawler đang chạy:
+
+```json
+{
+  "success": false,
+  "message": "Crawler is already running"
+}
+```
+
+Nếu vừa chạy xong và còn trong thời gian cooldown:
+
+```json
+{
+  "success": false,
+  "message": "Crawler cooldown, please try again in 17 seconds",
+  "statusCode": 429
+}
+```
+
+#### 6.10.2. GET /api/v1/crawler/status
+
+Lấy trạng thái crawler thủ công hiện tại. FE dùng API này để giữ trạng thái nút refresh đang quay khi người dùng chuyển page rồi quay lại.
+
+Cách gọi:
+
+```http
+GET /api/v1/crawler/status
+Authorization: Bearer <access_token>
+```
+
+Response mẫu khi đang chạy:
+
+```json
+{
+  "success": true,
+  "message": "Get crawler status successfully",
+  "data": {
+    "is_running": true,
+    "started_at": "2026-05-22T10:00:00.000Z",
+    "scope": "topic",
+    "topic_id": 1,
+    "max_results": 5
+  }
+}
+```
+
+Response mẫu khi không chạy:
+
+```json
+{
+  "success": true,
+  "message": "Get crawler status successfully",
+  "data": {
+    "is_running": false,
+    "success": true,
+    "finished_at": "2026-05-22T10:01:00.000Z",
+    "cooldown_remaining_ms": 12000,
+    "cooldown_until": "2026-05-22T10:01:20.000Z"
+  }
+}
+```
+
+#### 6.10.3. GET /api/v1/papers/:id/related?limit=5
 
 Lấy danh sách paper liên quan của một paper. API này sẽ được dùng ở trang chi tiết paper của Frontend.
 
-Backend dự kiến đọc bảng `related_papers`, sau đó join sang `papers` để trả thông tin paper. DB đã có bảng `related_papers`; phần còn thiếu là route/controller/service/repository và flow tạo dữ liệu related.
+Backend đọc bảng `related_papers`, join sang `papers` để trả thông tin paper liên quan. Database pipeline sinh dữ liệu cho bảng này bằng cách tìm paper cùng `topic_id` có similarity `title + abstract` vừa phải. Nếu bảng `related_papers` chưa có dữ liệu cho paper đó, API fallback lấy các paper cùng `topic_id` để Frontend vẫn có dữ liệu hiển thị.
 
 Query params:
 
@@ -1140,9 +1366,10 @@ Response mẫu:
 ```json
 {
   "success": true,
-  "message": "OK",
+  "message": "Get related papers successfully",
   "data": {
     "paper_id": 1,
+    "source": "same_topic",
     "related_papers": [
       {
         "id": 2,
@@ -1169,9 +1396,9 @@ response.data.data
 response.data
 ```
 
-#### 6.9.3. GET /api/v1/papers/:id/matches?limit=5
+#### 6.10.4. GET /api/v1/papers/:id/matches?limit=5
 
-Lấy danh sách paper trùng hoặc gần giống của một paper. DB đã có bảng `matching_papers`; Python duplicate checker hiện mới trả/log kết quả, còn bước lưu match vào DB và Backend API đọc bảng này chưa implement.
+Lấy danh sách paper trùng hoặc gần giống của một paper. Backend đọc bảng `matching_papers`; Database pipeline lưu kết quả duplicate checker vào bảng này sau mỗi lần crawler có paper mới.
 
 Cách gọi:
 
@@ -1184,28 +1411,33 @@ Response mẫu:
 ```json
 {
   "success": true,
-  "message": "OK",
+  "message": "Get matching papers successfully",
   "data": {
     "paper_id": 1,
-    "match_count": 2,
-    "matched_papers": [
+    "matches": [
       {
-        "id": 3,
-        "arxiv_id": "2401.00003",
-        "title": "Transformer for Stock Forecasting",
-        "abstract": "This paper proposes...",
-        "summary": "Bài báo đề xuất một mô hình transformer...",
-        "authors": ["Author A"],
-        "published_date": "2026-05-13",
-        "pdf_url": "https://arxiv.org/pdf/2401.00003",
-        "topic_id": 1
+        "matching_paper_id": 3,
+        "similarity_score": 0.86,
+        "match_type": "Gan giong",
+        "created_at": "2026-05-21T00:00:00.000Z",
+        "paper": {
+          "id": 3,
+          "arxiv_id": "2401.00003",
+          "title": "Transformer for Stock Forecasting",
+          "abstract": "This paper proposes...",
+          "summary": "Bài báo đề xuất một mô hình transformer...",
+          "authors": ["Author A"],
+          "published_date": "2026-05-13",
+          "pdf_url": "https://arxiv.org/pdf/2401.00003",
+          "topic_id": 1
+        }
       }
     ]
   }
 }
 ```
 
-#### 6.9.4. GET /api/v1/notifications
+#### 6.10.5. GET /api/v1/notifications
 
 Lấy danh sách thông báo của user đang đăng nhập từ bảng `notifications` và `user_notifications`.
 
@@ -1253,7 +1485,7 @@ Response mẫu:
 }
 ```
 
-#### 6.9.5. GET /api/v1/notifications/stream
+#### 6.10.6. GET /api/v1/notifications/stream
 
 Mở kết nối SSE để nhận notification realtime. FE dùng `EventSource`, nên token được truyền qua query `token`.
 
@@ -1270,7 +1502,7 @@ event: notification
 data: {"type":"NEW_NOTIFICATION","notification":{"id":1,"notification_id":1,"type":"NEW_PAPER","title":"Có paper mới","message":"Có 3 paper mới trong chủ đề Machine Learning","paper_id":12,"is_read":false,"read_at":null,"created_at":"2026-05-16T07:30:00.000Z","paper":{"id":12,"title":"Example Paper","pdf_url":"https://arxiv.org/abs/2605.00001"}}}
 ```
 
-#### 6.9.6. PATCH /api/v1/notifications/:id/read
+#### 6.10.7. PATCH /api/v1/notifications/:id/read
 
 Đánh dấu một thông báo của user đang đăng nhập là đã đọc.
 
@@ -1295,7 +1527,7 @@ Response mẫu:
 }
 ```
 
-#### 6.9.7. PATCH /api/v1/notifications/read-all
+#### 6.10.8. PATCH /api/v1/notifications/read-all
 
 Đánh dấu tất cả thông báo của user đang đăng nhập là đã đọc.
 
@@ -1318,7 +1550,7 @@ Response mẫu:
 }
 ```
 
-#### 6.9.8. POST /api/v1/internal/notifications/push
+#### 6.10.9. POST /api/v1/internal/notifications/push
 
 Endpoint nội bộ để DB pipeline báo cho Backend biết vừa tạo notification mới. Backend sẽ query notification theo `notification_ids` rồi đẩy xuống user đang online qua SSE.
 
@@ -1351,9 +1583,9 @@ Response mẫu:
 }
 ```
 
-#### 6.9.9. GET /api/v1/stats/topics/trends
+#### 6.10.10. GET /api/v1/stats/topics/trends
 
-Lấy danh sách topic xu hướng. DB hiện đã có cột `topics.trending`; AI/Python hoặc pipeline sẽ tính xu hướng rồi lưu vào DB, backend chỉ đọc ra trả cho FE.
+Lấy danh sách topic xu hướng. DB có cột `topics.trending`; database pipeline ưu tiên dùng AI semantic trend ranking để cập nhật điểm xu hướng, có fallback đếm số paper gần đây. Backend đọc ra và sắp xếp giảm dần cho FE.
 
 Cách gọi:
 
@@ -1371,22 +1603,24 @@ Response mẫu:
     {
       "id": 1,
       "name": "Machine Learning",
-      "trending": 1,
-      "paper_count": 25
+      "trending": 12,
+      "paper_count": 25,
+      "recent_paper_count": 12
     },
     {
       "id": 2,
       "name": "Natural Language Processing",
-      "trending": 2,
-      "paper_count": 18
+      "trending": 8,
+      "paper_count": 18,
+      "recent_paper_count": 8
     }
   ]
 }
 ```
 
-#### 6.9.10. POST /api/v1/papers/:id/rating
+#### 6.10.11. POST /api/v1/papers/:id/rating
 
-Lưu điểm user chấm cho một paper. DB hiện dùng bảng `user_paper_interactions`, trong đó cột `rating` lưu điểm của user với paper.
+Lưu điểm user chấm cho một paper. DB dùng bảng `user_paper_interactions`, trong đó cột `rating` lưu điểm của user với paper. Sau khi lưu, Backend tính lại trung bình và cập nhật `papers.avg_rating`.
 
 Cách gọi:
 
@@ -1405,17 +1639,19 @@ Response mẫu:
 ```json
 {
   "success": true,
-  "message": "Rate paper successfully",
+  "message": "Submit paper rating successfully",
   "data": {
     "paper_id": 1,
-    "rating": 4
+    "rating": 4,
+    "avg_rating": 4,
+    "rating_count": 1
   }
 }
 ```
 
-#### 6.9.11. GET /api/v1/papers/:id/rating/me
+#### 6.10.12. GET /api/v1/papers/:id/rating/me
 
-Lấy điểm mà user đang đăng nhập đã chấm cho một paper. DB hiện dùng bảng `user_paper_interactions`.
+Lấy điểm mà user đang đăng nhập đã chấm cho một paper. DB dùng bảng `user_paper_interactions`.
 
 Cách gọi:
 
@@ -1429,20 +1665,22 @@ Response mẫu:
 ```json
 {
   "success": true,
-  "message": "OK",
+  "message": "Get my paper rating successfully",
   "data": {
     "paper_id": 1,
-    "rating": 4
+    "rating": 4,
+    "avg_rating": 4,
+    "rating_count": 1
   }
 }
 ```
 
 DB advanced notes:
 
-- `related_papers(paper_id, related_paper_id)` đã có trong DB, dùng cho paper liên quan.
-- `matching_papers(paper_id, matching_paper_id, similarity_score, match_type)` đã có trong DB, dùng cho paper trùng/gần giống.
-- `user_paper_interactions(user_id, paper_id, is_read, rating, notes)` đã có trong DB, dùng cho history/rating/notes.
-- `topics.trending` đã có trong DB, dùng cho thống kê topic xu hướng.
+- `related_papers(paper_id, related_paper_id)` đã có trong DB, pipeline đã sinh dữ liệu paper liên quan theo cùng topic + similarity.
+- `matching_papers(paper_id, matching_paper_id, similarity_score, match_type)` đã có trong DB, Backend đã dùng cho paper trùng/gần giống.
+- `user_paper_interactions(user_id, paper_id, is_read, rating, notes)` đã có trong DB, Backend đã dùng cho rating và history; notes sẽ làm sau nếu cần.
+- `topics.trending` đã có trong DB, database pipeline đã cập nhật bằng AI semantic trend ranking, có fallback đếm paper gần đây để Backend trả API topic xu hướng.
 - `notifications` và `user_notifications` đã có trong DB, dùng cho thông báo và trạng thái đã đọc theo user.
-- Database pipeline hiện đã tạo notification dạng gộp theo topic khi crawler insert paper mới; Backend Express còn thiếu API đọc/đánh dấu đã đọc.
-- Các schema advanced đã có; Backend Express đã dùng notifications, còn related/matching/history/stats/rating vẫn cần route tương ứng.
+- Database pipeline hiện đã tạo notification dạng gộp theo topic khi crawler insert paper mới; Backend Express đã có API notification và SSE.
+- Các schema advanced đã có; Backend Express đã dùng related/matching/notifications/rating/history/stats trends.

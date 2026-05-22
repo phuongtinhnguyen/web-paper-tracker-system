@@ -4,6 +4,7 @@ import PaperCard from "../components/PaperCard";
 import Pagination from "../components/Pagination";
 import { getTrendingTopics, getPapersByTopic } from "../services/API";
 import { useFavorites } from "../contexts/FavoritesContext";
+import { subscribePaperDataUpdated } from "../utils/paperRefreshEvent";
 
 export default function TrendPage() {
   const [topics, setTopics] = useState([]);
@@ -18,7 +19,14 @@ export default function TrendPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [refreshTick, setRefreshTick] = useState(0);
   const postsPerPage = 5;
+
+  useEffect(() => {
+    return subscribePaperDataUpdated(() => {
+      setRefreshTick((value) => value + 1);
+    });
+  }, []);
 
   // Lấy danh sách Topics khi vào trang
   useEffect(() => {
@@ -36,7 +44,7 @@ export default function TrendPage() {
       }
     };
     fetchTopics();
-  }, []);
+  }, [refreshTick]);
 
   useEffect(() => {
     if (!selectedTopic) return;
@@ -67,7 +75,7 @@ export default function TrendPage() {
     };
 
     fetchPapers();
-  }, [selectedTopic, currentPage]);
+  }, [selectedTopic, currentPage, refreshTick]);
 
   const handleTopicClick = (topic) => {
     setSelectedTopic(topic);

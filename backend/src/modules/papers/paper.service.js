@@ -27,14 +27,21 @@ function mapPaper(paper) {
     summary: paper.summary,
     authors: normalizeAuthors(paper.authors),
     published_date: paper.published_date,
+    created_at: paper.created_at,
     pdf_url: paper.pdf_url,
+    avg_rating: paper.avg_rating ? Number(paper.avg_rating) : 0,
     topic_id: paper.topic_id,
+    is_read: Boolean(paper.is_read),
+    is_new: Boolean(paper.is_new),
   };
 }
 
-async function getPapers(query) {
+async function getPapers(query, userId = null) {
   const { page, limit } = query;
-  const { papers, total } = await paperRepository.getPapers(query);
+  const { papers, total } = await paperRepository.getPapers({
+    ...query,
+    userId,
+  });
 
   return {
     papers: papers.map(mapPaper),
@@ -47,19 +54,26 @@ async function getPapers(query) {
   };
 }
 
-async function getPaperById(id) {
+async function getPaperById(id, userId = null) {
   const paper = await paperRepository.getPaperById(id);
 
   if (!paper) {
     throw new AppError("Paper not found", 404);
   }
 
+  if (userId) {
+    await paperRepository.markPaperAsRead(userId, id);
+  }
+
   return mapPaper(paper);
 }
 
-async function searchPapers(query) {
+async function searchPapers(query, userId = null) {
   const { page, limit } = query;
-  const { papers, total } = await paperRepository.searchPapers(query);
+  const { papers, total } = await paperRepository.searchPapers({
+    ...query,
+    userId,
+  });
 
   return {
     papers: papers.map(mapPaper),
@@ -69,6 +83,74 @@ async function searchPapers(query) {
       total,
       total_pages: Math.ceil(total / limit),
     },
+  };
+}
+
+async function getRelatedPapers(id, query) {
+  const { limit } = query;
+  const paper = await paperRepository.getPaperById(id);
+
+  if (!paper) {
+    throw new AppError("Paper not found", 404);
+  }
+
+  const relatedFromTable = await paperRepository.getRelatedPapersFromTable(
+    id,
+    limit
+  );
+  let relatedPapers = relatedFromTable;
+  let source = "related_papers";
+
+  if (relatedPapers.length < limit && paper.topic_id) {
+    const excludedIds = [
+      Number(id),
+      ...relatedPapers.map((relatedPaper) => relatedPaper.id),
+    ];
+    const sameTopicPapers = await paperRepository.getRelatedPapersByTopic(
+      paper.topic_id,
+      excludedIds,
+      limit - relatedPapers.length
+    );
+
+    relatedPapers = [...relatedPapers, ...sameTopicPapers];
+
+    if (relatedFromTable.length === 0) {
+      source = "same_topic";
+    } else if (sameTopicPapers.length > 0) {
+      source = "related_papers_with_same_topic_fallback";
+    }
+  } else if (relatedPapers.length === 0) {
+    source = "none";
+  }
+
+  return {
+    paper_id: Number(id),
+    source,
+    related_papers: relatedPapers.map(mapPaper),
+  };
+}
+
+async function getMatchingPapers(id, query) {
+  const { limit } = query;
+  const paper = await paperRepository.getPaperById(id);
+
+  if (!paper) {
+    throw new AppError("Paper not found", 404);
+  }
+
+  const matches = await paperRepository.getMatchingPapers(id, limit);
+
+  return {
+    paper_id: Number(id),
+    matches: matches.map((match) => ({
+      matching_paper_id: match.id,
+      similarity_score: match.similarity_score
+        ? Number(match.similarity_score)
+        : 0,
+      match_type: match.match_type,
+      created_at: match.match_created_at,
+      paper: mapPaper(match),
+    })),
   };
 }
 
@@ -110,10 +192,52 @@ async function summarizePaper(id) {
   };
 }
 
+async function submitPaperRating(userId, paperId, rating) {
+  const paper = await paperRepository.getPaperById(paperId);
+
+  if (!paper) {
+    throw new AppError("Paper not found", 404);
+  }
+
+  const result = await paperRepository.upsertPaperRating(
+    userId,
+    paperId,
+    rating
+  );
+
+  return {
+    paper_id: Number(paperId),
+    rating: result.rating,
+    avg_rating: result.avg_rating,
+    rating_count: result.rating_count,
+  };
+}
+
+async function getMyPaperRating(userId, paperId) {
+  const paper = await paperRepository.getPaperById(paperId);
+
+  if (!paper) {
+    throw new AppError("Paper not found", 404);
+  }
+
+  const result = await paperRepository.getUserPaperRating(userId, paperId);
+
+  return {
+    paper_id: Number(paperId),
+    rating: result?.rating ?? null,
+    avg_rating: result?.avg_rating ? Number(result.avg_rating) : 0,
+    rating_count: result?.rating_count || 0,
+  };
+}
+
 
 module.exports = {
   getPapers,
   getPaperById,
   searchPapers,
+  getRelatedPapers,
+  getMatchingPapers,
   summarizePaper,
+  submitPaperRating,
+  getMyPaperRating,
 };

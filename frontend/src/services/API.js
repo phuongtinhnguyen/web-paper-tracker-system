@@ -2,6 +2,7 @@ import axios from "axios";
 
 // Cấu hình base URL của backend. Đổi lại cho phù hợp với môi trường của bạn.
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
+export const API_BASE_URL = BASE_URL;
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -152,5 +153,26 @@ export const markNotificationRead = (id) =>
 /** PATCH /notifications/read-all  -> { message } */
 export const markAllNotificationsRead = () =>
   api.patch("/notifications/read-all");
+
+/** GET /notifications/stream  -> SSE notification stream */
+export const createNotificationStream = () => {
+  const token = localStorage.getItem("access_token");
+
+  if (!token) {
+    return null;
+  }
+
+  return new EventSource(
+    `${API_BASE_URL}/notifications/stream?token=${encodeURIComponent(token)}`
+  );
+};
+
+/** POST /crawler/run  -> run manual crawler */
+export const runCrawler = (payload = {}) =>
+  api.post("/crawler/run", payload);
+
+/** GET /crawler/status  -> current manual crawler status */
+export const getCrawlerStatus = () =>
+  api.get("/crawler/status");
 
 export default api;

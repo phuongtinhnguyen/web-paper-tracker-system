@@ -49,10 +49,10 @@ Hệ thống crawl dữ liệu từ arXiv API, lưu thông tin paper vào Postgr
 
 | Module | Kết quả mong đợi khi hoàn thành |
 |---|---|
-| Frontend | React + Vite app có Login/Register, dashboard, topic management, paper list, paper detail, favorites, history, search UI và responsive layout. |
-| Backend | Node.js + Express.js REST API xử lý authentication, topics, papers, favorites, search và kết nối database. |
+| Frontend | React + Vite app có Login/Register, dashboard, topic browsing/tracking, paper list, paper detail, favorites, history, trend, notification UI, rating/related/matching UI và responsive layout. |
+| Backend | Node.js + Express.js REST API xử lý authentication, topics, papers, favorites, history, search, notifications, ratings, topic trends và kết nối database. |
 | Database | PostgreSQL/Neon database được quản lý bằng SQLAlchemy models và Alembic migrations. |
-| AI | Python AI module dùng Groq API với model LLaMA 3.3 70B để tóm tắt abstract, batch summarize và kiểm tra trùng bằng Cosine Similarity. |
+| AI | Python AI module dùng Groq API với model LLaMA 3.3 70B để tóm tắt abstract, batch summarize, gợi ý paper liên quan, kiểm tra trùng bằng Cosine Similarity và phân tích topic trend. |
 
 ---
 
@@ -63,19 +63,19 @@ Hệ thống crawl dữ liệu từ arXiv API, lưu thông tin paper vào Postgr
 Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 
 - Đăng ký, đăng nhập
-- Thêm, sửa, xoa chủ đề theo dõi
+- Thêm, sửa, xóa chủ đề theo dõi
 - Tự động lấy paper mới theo chủ đề
 - Lưu thông tin paper: tiêu đề, abstract, tác giả, ngày công bố, link
-- Tom tắt ngắn ý chính của paper từ abstract
-- Hien thị danh sách paper mới
-- Tim kiếm, lọc paper theo từ khoa hoặc chủ đề
+- Tóm tắt ngắn ý chính của paper từ abstract
+- Hiển thị danh sách paper mới
+- Tìm kiếm, lọc paper theo từ khóa hoặc chủ đề
 - Xem chi tiết paper
-- Luu paper yêu thích
+- Lưu paper yêu thích
 - Gợi ý paper liên quan
 - Phát hiện paper trùng hoặc gần giống
-- Gửi thong bao khi co paper mới
-- Thong ke xu hưong theo chủ đề
-- Chấm điem paper đang đọc
+- Gửi thông báo khi có paper mới
+- Thống kê xu hướng theo chủ đề
+- Chấm điểm paper đang đọc
 
 ---
 
@@ -90,7 +90,7 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 - [x] Form đăng nhập gọi API đăng nhập
 - [x] Chặn protected pages khi user chưa đăng nhập
 
-### Thêm, sửa, xoa chủ đề theo dõi
+### Thêm, sửa, xóa chủ đề theo dõi
 
 - [x] UI thêm chủ đề theo dõi
 - [x] UI xóa chủ đề theo dõi
@@ -98,15 +98,19 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 - [x] Call API xóa chủ đề theo dõi
 - [x] Sửa tên lại thành "Chủ đề theo dõi"
 - [x] Sửa "Trang quản lý topic" thành "Trang quản lý chủ đề"
-- [ ] UI sửa chủ đề theo dõi - Low priority
-- [ ] Call API sửa chủ đề theo dõi - Low priority
 
 ### Tự động lấy paper mới theo chủ đề
 
 - [x] UI Trang quản lý chủ đề đầy đủ
 - [x] Nhấn vào chủ đề trong trang "Quản lý chủ đề" hiển thị paper theo ngày gần nhất
 - [x] Nhấn vào chủ đề trong trang "Chủ đề theo dõi" hiển thị paper theo ngày gần nhất
-- [ ] UI refresh/reload danh sách sau khi crawler có paper mới - Low Priority
+- [x] UI refresh/reload danh sách sau khi crawler có paper mới qua notification SSE
+- [x] Nút refresh Dashboard gọi crawler thủ công, mặc định lấy 5 paper mới nhất trong 10 topic mặc định rồi tự gán topic
+- [x] Nút refresh trong Quản lý chủ đề gọi crawler thủ công, lấy 5 paper cho topic đang chọn
+- [x] FE giữ trạng thái crawler đang chạy khi đổi page bằng `GET /api/v1/crawler/status`
+- [x] BE chặn chạy chồng manual crawler và có cooldown mặc định 20 giây để tránh spam arXiv
+- [x] Manual refresh Dashboard/Topic tạo notification trong chuông cho user vừa bấm nếu crawler thêm được paper mới
+- [x] FE làm nổi bật paper mới chưa đọc bằng badge `Mới`
 
 ### Lưu thông tin paper: tiêu đề, abstract, tác giả, ngày công bố, link
 
@@ -116,14 +120,14 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 - [x] Component paper card hiển thị ngày công bố nếu có dữ liệu
 - [x] Component paper card hiển thị link đọc paper
 
-### Tom tắt ngắn ý chính của paper từ abstract
+### Tóm tắt ngắn ý chính của paper từ abstract
 
 - [x] Hiển thị summary trên paper card
 - [x] Hiển thị trạng thái đang tạo summary ở trang chi tiết
 - [x] FE gọi API fallback summary khi `summary` đang `NULL`: `POST /api/v1/papers/:id/summarize`
 
 
-### Hien thị danh sách paper mới
+### Hiển thị danh sách paper mới
 
 - [x] Filter "Bài báo gần đây"
 - [x] Filter "Bài báo 2 ngày gần đây"
@@ -131,7 +135,7 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 - [x] Gọi API lấy danh sách paper "Bài báo 2 ngày gần đây"
 - [x] Pagination hoặc load more cho danh sách paper mới
 
-### Tim kiếm, lọc paper theo từ khoa hoặc chủ đề
+### Tìm kiếm, lọc paper theo từ khóa hoặc chủ đề
 
 - [x] SearchBar nhập từ khóa
 - [x] Gọi API search theo title
@@ -145,7 +149,7 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 - [x] Gọi API trả về tiêu đề, abstract, tác giả, ngày công bố, url paper
 - [x] Hiển thị abstract, summary, tác giả, ngày công bố và link paper
 
-### Luu paper yêu thích
+### Lưu paper yêu thích
 
 - [x] UI PaperCard có nút favorite
 - [x] Sidebar có navigation tới mục yêu thích
@@ -153,7 +157,7 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 - [x] Gọi API bỏ lưu paper yêu thích
 - [x] UI Trang danh sách paper yêu thích
 - [x] Gọi API hiển thị danh sách paper yêu thích của user đang login
-- [ ] Bug Gọi API bỏ lưu paper yêu thích
+- [x] Bug gọi API bỏ lưu paper yêu thích đã xử lý
 
 
 ### Chưa cần làm ở sprint 1
@@ -164,23 +168,24 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 
 ### Nâng cao - Phát hiện paper trùng hoặc gần giống
 
-- [ ] UI hiển thị cảnh báo paper trùng/gần giống
+- [x] UI hiển thị danh sách paper trùng/gần giống ở trang chi tiết
+- [ ] UI cảnh báo nổi bật khi paper có duplicate/matching - Low Priority
 
-### Nâng cao - Gửi thong bao khi co paper mới
+### Nâng cao - Gửi thông báo khi có paper mới
 
-- [ ] UI notification khi có paper mới
-- [ ] Trạng thái đã đọc thông báo
+- [x] UI notification khi có paper mới
+- [x] Trạng thái đã đọc thông báo
 
-### Nâng cao - Thong ke xu hưong theo chủ đề
+### Nâng cao - Thống kê xu hướng theo chủ đề
 
-- [ ] Dashboard thống kê số paper theo chủ đề
+- [x] Dashboard thống kê số paper theo chủ đề
 
-### Nâng cao - Chấm điem paper đang đọc
+### Nâng cao - Chấm điểm paper đang đọc
 
-- [ ] UI chấm điểm paper (sao trung bình + button đánh giá + popup đánh giá)
-- [ ] Gửi điểm chấm lên Backend API
-- [ ] Gọi API BE trả lại điểm trung bình mới
-- [ ] UI Refesh điểm trung bình sau khi đánh giá
+- [x] UI chấm điểm paper (sao trung bình + button đánh giá + popup đánh giá)
+- [x] Gửi điểm chấm lên Backend API
+- [x] Gọi API BE trả lại điểm trung bình mới
+- [x] UI Refesh điểm trung bình sau khi đánh giá
 
 ---
 
@@ -204,7 +209,7 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 - [x] Middleware bảo vệ protected API
 - [x] Cơ chế logout phía client bằng cách xóa token
 
-### Thêm, sửa, xoa chủ đề theo dõi
+### Thêm, sửa, xóa chủ đề theo dõi
 
 - [x] API lấy tất cả chủ đề trong DB cho combo box: `GET /api/v1/topics`
 - [x] API lấy danh sách chủ đề user đang theo dõi: `GET /api/v1/user-topics`
@@ -216,14 +221,15 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 ### Tự động lấy paper mới theo chủ đề
 
 - [x] API lọc/lấy papers của một chủ đề bằng `topic_id`, sắp xếp theo ngày gần nhất: `GET /api/v1/papers?page=1&limit=5&topic_id=1`
-- [ ] API trigger crawler thủ công cho môi trường dev: `POST /api/v1/crawler/run`
+- [x] API trigger crawler thủ công cho FE/dev: `POST /api/v1/crawler/run`
 
 ### Lưu thông tin paper: tiêu đề, abstract, tác giả, ngày công bố, link
 
 - [x] API danh sách paper trả về title, abstract, authors, published_date, pdf_url: `GET /api/v1/papers`
+- [x] API danh sách/search paper trả về `is_read`, `is_new` theo user đăng nhập để FE highlight paper mới chưa đọc
 - [x] API lấy chi tiết một paper theo id -  trả về tiêu đề, abstract, tác giả, ngày công bố, url paper: `GET /api/v1/papers/:id`
 
-### Tom tắt ngắn ý chính của paper từ abstract
+### Tóm tắt ngắn ý chính của paper từ abstract
 
 - [x] BE trả field `summary` từ DB trong API danh sách paper: `GET /api/v1/papers`
 - [x] BE trả field `summary` từ DB trong API chi tiết paper: `GET /api/v1/papers/:id`
@@ -232,13 +238,13 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 - [x] Có script chạy batch summary: `python ai/run_summarizer_batch.py --batch-size 20`
 - [x] Cấu hình pipeline chạy batch sau khi crawler thêm paper mới: `database/run_hourly_pipeline.py`
 
-### Hien thị danh sách paper mới
+### Hiển thị danh sách paper mới
 
 - [x] API lấy tất cả paper có phân trang: `GET /api/v1/papers?page=1&limit=5&filter=all`
 - [x] API lấy danh sách paper gần đây: `GET /api/v1/papers?page=1&limit=5&filter=recent`
 - [x] API lấy danh sách paper trong 2 ngày gần đây: `GET /api/v1/papers?page=1&limit=5&filter=2days`
 
-### Tim kiếm, lọc paper theo từ khoa hoặc chủ đề
+### Tìm kiếm, lọc paper theo từ khóa hoặc chủ đề
 
 - [x] API lọc paper theo chủ đề bằng `topic_id`: `GET /api/v1/papers?page=1&limit=5&topic_id=1`
 - [x] API search chung theo `title`, `abstract`, `authors`: `GET /api/v1/papers/search?q=keyword&page=1&limit=10`
@@ -247,7 +253,7 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 
 - [x] API lấy chi tiết một paper theo id -  trả về tiêu đề, abstract, tác giả, ngày công bố, url paper: `GET /api/v1/papers/:id`
 
-### Luu paper yêu thích
+### Lưu paper yêu thích
 
 - [x] API lưu paper yêu thích: `POST /api/v1/papers/favorite/:id`
 - [x] API bỏ lưu paper yêu thích: `DELETE /api/v1/papers/favorite/:id`
@@ -255,99 +261,193 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 
 ### Nâng cao - Gợi ý paper liên quan
 
-- [ ] API lấy paper liên quan: `GET /api/v1/papers/:id/related?limit=5`
-- [ ] Giới hạn số lượng paper gợi ý
+- [x] API lấy paper liên quan: `GET /api/v1/papers/:id/related?limit=5`
+- [x] Giới hạn số lượng paper gợi ý
 
 ### Nâng cao - Phát hiện paper trùng hoặc gần giống
 
-- [ ] API lấy tên và id các paper trùng hoặc gần giống: `GET /api/v1/papers/:id/matches?limit=5`
+- [x] API lấy tên và id các paper trùng hoặc gần giống: `GET /api/v1/papers/:id/matches?limit=5`
 
-### Nâng cao - Gửi thong bao khi co paper mới
+### Nâng cao - Gửi thông báo khi có paper mới
 
-- [ ] Service tạo thông báo khi crawler có paper mới - check sau
-- [ ] API lấy danh sách thông báo: `GET /api/v1/notifications` - làm sau khi có bảng `notifications`
-- [ ] API đánh dấu thông báo đã đọc: `PATCH /api/v1/notifications/:id/read` - làm sau khi có bảng `notifications`
+- [x] Database pipeline tạo thông báo dạng gộp theo topic khi crawler có paper mới
+- [x] API lấy danh sách thông báo: `GET /api/v1/notifications` - đọc từ `notifications`/`user_notifications`
+- [x] API SSE stream nhận thông báo realtime: `GET /api/v1/notifications/stream`
+- [x] API nội bộ để DB pipeline báo notification mới cho BE: `POST /api/v1/internal/notifications/push`
+- [x] API đánh dấu thông báo đã đọc: `PATCH /api/v1/notifications/:id/read`
+- [x] API đánh dấu tất cả thông báo đã đọc: `PATCH /api/v1/notifications/read-all`
 
-### Nâng cao - Thong ke xu hưong theo chủ đề
+### Nâng cao - Thống kê xu hướng theo chủ đề
 
-- [ ] API lấy danh sách topic xu hướng theo cột planned `topics.trending`: `GET /api/v1/stats/topics/trends`
+- [x] API lấy danh sách topic xu hướng theo cột `topics.trending`: `GET /api/v1/stats/topics/trends`
 
-### Nâng cao - Chấm điem paper đang đọc
+### Nâng cao - Chấm điểm paper đang đọc
 
-- [ ] API lưu điểm user chấm vào DB: `POST /api/v1/papers/:id/rating`
-- [ ] API lấy điểm paper của user: `GET /api/v1/papers/:id/rating/me`
+- [x] API lưu điểm user chấm vào DB qua `user_paper_interactions.rating`: `POST /api/v1/papers/:id/rating`
+- [x] API lấy điểm paper của user từ `user_paper_interactions`: `GET /api/v1/papers/:id/rating/me`
 
 
-- [ ] API lịch sử đọc (trả kq và lưu kq)
+- [x] API tự lưu lịch sử đọc khi user đăng nhập mở chi tiết paper: `GET /api/v1/papers/:id`
+- [x] API lấy lịch sử đọc có phân trang/search: `GET /api/v1/history?page=1&limit=5`
+- [x] API xóa một mục lịch sử đọc: `DELETE /api/v1/history/:paperId`
+- [x] API xóa toàn bộ lịch sử đọc: `DELETE /api/v1/history`
 ---
 
 ## DB Checklist
 
 ### Đăng ký, đăng nhập
 
-- [x]
+- [x] Bảng `users`
+- [x] Cột `id`
+- [x] Cột `email`
+- [x] Cột `hashed_password`
+- [x] Cột `full_name`
+- [x] Cột `created_at`
+- [x] Ràng buộc `users.email` unique để không trùng tài khoản
 
-### Thêm, sửa, xoa chủ đề theo dõi
+### Thêm, sửa, xóa chủ đề theo dõi
 
-- [x]
+- [x] Bảng `topics`
+- [x] Cột `topics.id`
+- [x] Cột `topics.name`
+- [x] Bảng `user_topics`
+- [x] Cột `user_topics.user_id`
+- [x] Cột `user_topics.topic_id`
+- [x] Khóa chính kép `user_topics(user_id, topic_id)`
 
 ### Tự động lấy paper mới theo chủ đề
 
-- [x]
+- [x] Bảng `papers`
+- [x] Cột `papers.arxiv_id`
+- [x] Cột `papers.topic_id`
+- [x] Cột `papers.created_at`
+- [x] Cột `papers.published_date`
+- [x] Bảng `topics`
+- [x] Ràng buộc unique cho `papers.arxiv_id` để crawler không lưu trùng paper
 
 ### Lưu thông tin paper: tiêu đề, abstract, tác giả, ngày công bố, link
 
-- [x]
+- [x] Bảng `papers`
+- [x] Cột `id`
+- [x] Cột `arxiv_id`
+- [x] Cột `title`
+- [x] Cột `abstract`
+- [x] Cột `authors`
+- [x] Cột `published_date`
+- [x] Cột `pdf_url`
+- [x] Cột `topic_id`
+- [x] Cột `created_at`
 
-### Tom tắt ngắn ý chính của paper từ abstract
+### Tóm tắt ngắn ý chính của paper từ abstract
 
-- [x] 
+- [x] Bảng `papers`
+- [x] Cột `abstract`
+- [x] Cột `summary`
+- [x] Pipeline/AI cập nhật `papers.summary` cho paper chưa có summary
 
-### Hien thị danh sách paper mới
+### Hiển thị danh sách paper mới
 
-- [x]
+- [x] Bảng `papers`
+- [x] Cột `published_date`
+- [x] Cột `created_at`
+- [x] Cột `topic_id`
+- [x] Cột `summary`
+- [x] Cột `avg_rating`
+- [x] Bảng `user_paper_interactions` để BE trả `is_read`/`is_new` theo user
 
-### Tim kiếm, lọc paper theo từ khoa hoặc chủ đề
+### Tìm kiếm, lọc paper theo từ khóa hoặc chủ đề
 
-- [x]
+- [x] Bảng `papers`
+- [x] Cột `title`
+- [x] Cột `abstract`
+- [x] Cột `authors`
+- [x] Cột `topic_id`
+- [x] Bảng `topics`
+- [x] Cột `topics.name`
 
 ### Xem chi tiết paper
 
-- [x]
+- [x] Bảng `papers`
+- [x] Các cột chi tiết: `title`, `abstract`, `summary`, `authors`, `published_date`, `pdf_url`, `topic_id`, `avg_rating`
+- [x] Bảng `user_paper_interactions`
+- [x] Cột `user_paper_interactions.is_read`
+- [x] Cột `user_paper_interactions.created_at`
+- [x] Cột `user_paper_interactions.updated_at`
+- [x] DB hỗ trợ lưu lịch sử đọc khi user mở chi tiết paper
 
-### Luu paper yêu thích
+### Lưu paper yêu thích
 
-- [x]
+- [x] Bảng `favorites`
+- [x] Cột `favorites.user_id`
+- [x] Cột `favorites.paper_id`
+- [x] Cột `favorites.added_at`
+- [x] Khóa chính kép `favorites(user_id, paper_id)`
 
 ### Nâng cao - Gợi ý paper liên quan
-- [ ] Bảng `related_papers`
-- [ ] Cột `paper_id`
-- [ ] Cột `related_paper_id`
-- [ ] Tìm paper cùng topic
+
+- [x] Bảng `related_papers`
+- [x] Cột `paper_id`
+- [x] Cột `related_paper_id`
+- [x] Khóa chính kép `related_papers(paper_id, related_paper_id)`
+- [x] Tìm paper cùng topic
+- [x] Pipeline lưu quan hệ paper liên quan vào `related_papers`
 - [ ] Tìm paper cùng tác giả - Low Priority
 
 ### Nâng cao - Phát hiện paper trùng hoặc gần giống
 
-- [ ] Bảng `matching_papers`
-- [ ] Cột `paper_id`
-- [ ] Cột `related_paper_id`
+- [x] Bảng `matching_papers`
+- [x] Cột `paper_id`
+- [x] Cột `matching_paper_id`
+- [x] Cột `similarity_score`
+- [x] Cột `match_type`
+- [x] Cột `created_at`
+- [x] Khóa chính kép `matching_papers(paper_id, matching_paper_id)`
 - [x] Tìm paper trùng hoặc gần giống bằng python
+- [x] Lưu kết quả kiểm tra trùng vào `matching_papers`
 
-### Nâng cao - Gửi thong bao khi co paper mới
+### Nâng cao - Gửi thông báo khi có paper mới
 
+- [x] Bảng `notifications`
+- [x] Cột `notifications.notification_id`
+- [x] Cột `notifications.type`
+- [x] Cột `notifications.title`
+- [x] Cột `notifications.message`
+- [x] Cột `notifications.paper_id`
+- [x] Cột `notifications.created_at`
+- [x] Bảng `user_notifications`
+- [x] Cột `user_notifications.user_id`
+- [x] Cột `user_notifications.notification_id`
+- [x] Cột `user_notifications.is_read`
+- [x] Cột `user_notifications.read_at`
+- [x] Khóa chính kép `user_notifications(user_id, notification_id)`
 - [x] Server DB/crawler cào data theo giờ bằng `database/run_hourly_pipeline.py`
-- [ ] Gửi event cho FE/BE sau khi cào xong
-- [ ] Bảng `notifications` sẽ thực hiện sau, DB hiện tại chưa có bảng này
+- [x] Gửi event cho BE/FE sau khi cào xong qua internal webhook và SSE
+- [x] Pipeline tạo notification dạng gộp theo topic khi crawler insert paper mới
 
-### Nâng cao - Thong ke xu hưong theo chủ đề
-- [ ] Tạo 1 cột `trending` cho bảng `topics`
-- [ ] Server DB call py func truyền vào tất cả các topic, AI thống kê ra các topic xu hướng trả về list - đầu list là xu hướng nhất,...
-- [ ] Lưu vào DB ở cột `trending`
+### Nâng cao - Thống kê xu hướng theo chủ đề
 
-### Nâng cao - Chấm điem paper đang đọc
+- [x] Bảng `topics`
+- [x] Cột `topics.trending`
+- [x] Bảng `papers`
+- [x] Cột `papers.topic_id`
+- [x] Cột `papers.published_date`
+- [x] Server DB pipeline dùng AI semantic trend ranking để tính topic xu hướng
+- [x] Pipeline lưu điểm xu hướng vào DB ở cột `topics.trending`
 
-- [ ] Tạo 1 bảng `user_paper_interactions`
-- [ ] 1 cột avg_rating -> bảng papers
+### Nâng cao - Chấm điểm paper đang đọc
+
+- [x] Tạo bảng `user_paper_interactions`
+- [x] Cột `user_paper_interactions.user_id`
+- [x] Cột `user_paper_interactions.paper_id`
+- [x] Cột `user_paper_interactions.is_read`
+- [x] Cột `user_paper_interactions.rating`
+- [x] Cột `user_paper_interactions.notes`
+- [x] Cột `user_paper_interactions.created_at`
+- [x] Cột `user_paper_interactions.updated_at`
+- [x] Khóa chính kép `user_paper_interactions(user_id, paper_id)`
+- [x] Tạo cột `avg_rating` trong bảng `papers`
+- [x] Pipeline cập nhật `papers.avg_rating` từ rating trong `user_paper_interactions`
+- [x] BE API chấm điểm/lấy điểm paper
 
 ---
 
@@ -357,19 +457,19 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 
 - Không có hạng mục AI riêng.
 
-### Thêm, sửa, xoa chủ đề theo dõi
+### Thêm, sửa, xóa chủ đề theo dõi
 
-- Không cố
+- Không có hạng mục AI riêng.
 
 ### Tự động lấy paper mới theo chủ đề
 
-- Không có
+- Không có hạng mục AI riêng.
 
 ### Lưu thông tin paper: tiêu đề, abstract, tác giả, ngày công bố, link
 
 - Không có hạng mục AI riêng.
 
-### Tom tắt ngắn ý chính của paper từ abstract
+### Tóm tắt ngắn ý chính của paper từ abstract
 
 - [x] Hàm `summarize_abstract`
 - [x] Prompt tóm tắt abstract thành tiếng Việt 3-4 câu
@@ -378,11 +478,11 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 - [x] Ghi summary vào paper thiếu summary
 - [x] FastAPI endpoint tóm tắt on-demand: `POST /summarize`
 
-### Hien thị danh sách paper mới
+### Hiển thị danh sách paper mới
 
 - Không có hạng mục AI riêng.
 
-### Tim kiếm, lọc paper theo từ khoa hoặc chủ đề
+### Tìm kiếm, lọc paper theo từ khóa hoặc chủ đề
 
 - Không có
 
@@ -390,13 +490,14 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 
 - Không có hạng mục AI riêng.
 
-### Luu paper yêu thích
+### Lưu paper yêu thích
 
 - Không có hạng mục AI riêng.
 
 ### Nâng cao - Gợi ý paper liên quan
 
-- Không có
+- [x] Hàm `find_related_papers`
+- [x] Tính similarity `title + abstract` cho paper cùng topic
 
 ### Nâng cao - Phát hiện paper trùng hoặc gần giống
 
@@ -405,27 +506,29 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 - [x] Hàm `_cosine_similarity`
 - [x] Hàm `check_duplicate` trả nhiều paper gần giống qua field `matches`
 - [x] Script chạy duplicate checker: `python ai/run_duplicate_checker.py`
-- [ ] Lưu kết quả kiểm tra trùng vào bảng planned `matching_papers`
+- [x] Lưu kết quả kiểm tra trùng vào bảng `matching_papers`
 
-### Nâng cao - Gửi thong bao khi co paper mới
+### Nâng cao - Gửi thông báo khi có paper mới
 
-- Không có
+- Không có hạng mục AI riêng.
 
-### Nâng cao - Thong ke xu hưong theo chủ đề
+### Nâng cao - Thống kê xu hướng theo chủ đề
 
-- [ ] Tạo 1 py func dùng AI phân tích/gợi ý xu hướng theo chủ đề - Nhận vào 1 list các title topic -> trả ra list title topic đã sắp xếp theo thứ tự xu hướng
+- [x] Tạo 1 py func dùng AI phân tích/gợi ý xu hướng theo chủ đề - Nhận vào 1 list các title topic -> trả ra list title topic đã sắp xếp theo thứ tự xu hướng
 
-### Nâng cao - Chấm điem paper đang đọc
+### Nâng cao - Chấm điểm paper đang đọc
 
-- Không có
+- Không có hạng mục AI riêng.
 
 ### Review + merge code
 
 ### Docs
-- [ ] Vẽ sơ đồ ERD cho database
-- [ ] Các sơ đồ khác
-- [ ] Docs
 
+- [ ] Mô hình Use Case (có `sơ đồ Use case`) - cDiễm
+- [ ] Phân tích (có `sơ đồ lớp` và `sơ đồ trạng thái`) - Phúc
+- [ ] Thiết kế dữ liệu (có `sơ ERD`) - aDuy
+- [ ] Thiết kế kiến trúc - Tính
+- [ ] Kết quả thực hiện - Phúc
 ---
 
 # 3. Non-Functional Requirements
@@ -623,7 +726,9 @@ web-paper-tracker-system/
 |   |   |   |   |-- topic.validation.js
 |   |   |   |-- papers/
 |   |   |   |-- favorites/
-|   |   |   |-- search/
+|   |   |   |-- history/
+|   |   |   |-- notifications/
+|   |   |   |-- internal/
 |   |   |-- utils/
 |   |-- package.json
 |
@@ -738,7 +843,7 @@ Database được triển khai bằng Python với:
 - `models.py`: định nghĩa ORM models
 - `alembic/`: quản lý database migrations
 
-DB nghiệp vụ hiện tại có 5 bảng chính:
+DB nghiệp vụ hiện tại có các bảng core:
 
 ```txt
 users
@@ -748,11 +853,23 @@ favorites
 user_topics
 ```
 
+DB cũng đã có schema cho các nhóm advanced:
+
+```txt
+related_papers
+matching_papers
+user_paper_interactions
+notifications
+user_notifications
+topics.trending
+papers.avg_rating
+```
+
 Ghi chú:
 
 - `alembic_version` là bảng metadata của Alembic, không phải bảng nghiệp vụ.
 - `papers.topic_id` đã có trong DB hiện tại và liên kết tới `topics.id`.
-- Các bảng/cột advanced `related_papers`, `matching_papers`, `paper_ratings`, `topics.trending`, `notifications` chưa có trong DB hiện tại.
+- Các bảng/cột advanced đã có schema DB. BE đã implement related/matching/notifications/ratings/history/stats trends.
 
 ---
 
@@ -778,6 +895,7 @@ Các bảng đang có trong DB hiện tại:
 |---|---|---|
 | id | Integer | Primary key, index |
 | name | String(100) | Unique, index, not null |
+| trending | Integer | Default 0, dùng cho topic xu hướng |
 
 #### papers
 
@@ -791,6 +909,7 @@ Các bảng đang có trong DB hiện tại:
 | authors | String(500) | Nullable |
 | published_date | DateTime | Nullable |
 | pdf_url | String(500) | Nullable |
+| avg_rating | Float | Default 0.0 |
 | created_at | DateTime | Default current UTC time |
 | topic_id | Integer | Foreign key to `topics.id`, nullable |
 
@@ -809,9 +928,9 @@ Các bảng đang có trong DB hiện tại:
 | user_id | Integer | Foreign key to `users.id`, primary key |
 | topic_id | Integer | Foreign key to `topics.id`, primary key |
 
-### Future/Planned Entities
+### Advanced Entities Đã Có Schema DB
 
-Các bảng/cột dưới đây chưa có trong DB hiện tại, sẽ bổ sung khi làm feature nâng cao:
+Các bảng/cột dưới đây đã có trong `database/models.py` và migration. Backend Express đã dùng `related_papers`, `matching_papers`, `notifications`/`user_notifications`, `user_paper_interactions` cho rating/history và `topics.trending` cho topic trends.
 
 #### related_papers
 
@@ -825,32 +944,42 @@ Các bảng/cột dưới đây chưa có trong DB hiện tại, sẽ bổ sung 
 | Field | Type | Constraint |
 |---|---|---|
 | paper_id | Integer | Foreign key to `papers.id`, primary key |
-| related_paper_id | Integer | Foreign key to `papers.id`, primary key |
+| matching_paper_id | Integer | Foreign key to `papers.id`, primary key |
+| similarity_score | Float | Not null |
+| match_type | String(50) | Default `AI_ABSTRACT` |
+| created_at | DateTime | Default current UTC time |
 
 #### notifications
 
 | Field | Type | Constraint |
 |---|---|---|
-| id | Integer | Primary key |
-| user_id | Integer | Foreign key to `users.id` |
-| title | String | Not null |
+| notification_id | Integer | Primary key, index |
+| type | String(50) | Not null |
+| title | String(255) | Not null |
 | message | Text | Not null |
-| is_read | Boolean | Default false |
+| paper_id | Integer | Foreign key to `papers.id`, nullable |
 | created_at | DateTime | Default current UTC time |
 
-#### paper_ratings
+#### user_notifications
+
+| Field | Type | Constraint |
+|---|---|---|
+| user_id | Integer | Foreign key to `users.id`, primary key |
+| notification_id | Integer | Foreign key to `notifications.notification_id`, primary key |
+| is_read | Boolean | Default false |
+| read_at | DateTime | Nullable |
+
+#### user_paper_interactions
 
 | Field | Type | Constraint |
 |---|---|---|
 | user_id | Integer | Foreign key to `users.id`, primary key |
 | paper_id | Integer | Foreign key to `papers.id`, primary key |
-| rating | Integer | User rating value |
-
-#### topics.trending
-
-| Field | Type | Constraint |
-|---|---|---|
-| trending | Integer | Planned column on `topics`, dùng để sắp xếp topic xu hướng |
+| is_read | Boolean | Default false |
+| rating | Integer | Nullable |
+| notes | Text | Nullable |
+| created_at | DateTime | Default current UTC time |
+| updated_at | DateTime | Default current UTC time, auto-update |
 
 ---
 
@@ -862,6 +991,7 @@ Các bảng/cột dưới đây chưa có trong DB hiện tại, sẽ bổ sung 
 - One Topic can be followed by many Users
 - One Topic can have many Papers
 - One Paper belongs to one Topic through `papers.topic_id`
+- `user_paper_interactions` lưu trạng thái đã đọc, rating và notes theo từng user-paper
 - `favorites` và `user_topics` dùng composite primary key
 - Foreign keys dùng `ondelete="CASCADE"`
 
@@ -912,19 +1042,26 @@ Frontend và Backend thống nhất một base URL khi tích hợp.
 | Papers | GET | `/api/v1/papers?page=1&limit=5&filter=2days` | Lấy paper trong 2 ngày gần đây | Implemented |
 | Papers | GET | `/api/v1/papers?page=1&limit=5&topic_id=1` | Lọc paper theo chủ đề bằng `papers.topic_id` | Implemented |
 | Papers | GET | `/api/v1/papers/search?q=keyword&page=1&limit=10` | Search theo title, abstract, authors | Implemented |
-| Papers | GET | `/api/v1/papers/:id` | Lấy chi tiết paper, bao gồm field `summary` từ DB | Implemented |
+| Papers | GET | `/api/v1/papers/:id` | Lấy chi tiết paper, bao gồm field `summary`; nếu có token thì tự lưu lịch sử đọc | Implemented |
 | Papers | POST | `/api/v1/papers/:id/summarize` | Tóm tắt on-demand khi `summary` đang `NULL` | Implemented |
 | Favorites | GET | `/api/v1/favorites` | Lấy paper yêu thích | Implemented |
 | Favorites | POST | `/api/v1/papers/favorite/:id` | Lưu paper yêu thích | Implemented |
 | Favorites | DELETE | `/api/v1/papers/favorite/:id` | Bỏ lưu paper yêu thích | Implemented |
-| Crawler | POST | `/api/v1/crawler/run` | Trigger crawler thủ công cho dev/admin | Planned Core/Internal |
-| Related | GET | `/api/v1/papers/:id/related?limit=5` | Lấy paper liên quan cho trang chi tiết, cần bảng planned `related_papers` hoặc logic fallback theo topic | Planned Core/Upcoming |
-| Duplicate | GET | `/api/v1/papers/:id/matches?limit=5` | Lấy paper trùng/gần giống từ bảng planned `matching_papers` | Advanced |
-| Notifications | GET | `/api/v1/notifications` | Lấy thông báo - thực hiện sau khi có bảng `notifications` | Future/Later |
-| Notifications | PATCH | `/api/v1/notifications/:id/read` | Đánh dấu thông báo đã đọc - thực hiện sau khi có bảng `notifications` | Future/Later |
-| Stats | GET | `/api/v1/stats/topics/trends` | Lấy topic xu hướng từ cột planned `topics.trending` | Advanced |
-| Ratings | POST | `/api/v1/papers/:id/rating` | Lưu điểm vào bảng planned `paper_ratings` | Advanced |
-| Ratings | GET | `/api/v1/papers/:id/rating/me` | Lấy điểm từ bảng planned `paper_ratings` | Advanced |
+| History | GET | `/api/v1/history?page=1&limit=5` | Lấy lịch sử đọc từ `user_paper_interactions` | Implemented |
+| History | DELETE | `/api/v1/history/:paperId` | Xóa một mục lịch sử đọc | Implemented |
+| History | DELETE | `/api/v1/history` | Xóa toàn bộ lịch sử đọc | Implemented |
+| Crawler | POST | `/api/v1/crawler/run` | Trigger crawler thủ công; FE dùng cho nút refresh Dashboard/Topic | Implemented |
+| Crawler | GET | `/api/v1/crawler/status` | Lấy trạng thái crawler thủ công đang chạy để FE giữ trạng thái khi đổi page | Implemented |
+| Related | GET | `/api/v1/papers/:id/related?limit=5` | Lấy paper liên quan từ `related_papers`, fallback cùng topic nếu chưa có dữ liệu related | Implemented |
+| Duplicate | GET | `/api/v1/papers/:id/matches?limit=5` | Lấy paper trùng/gần giống từ `matching_papers` | Implemented |
+| Notifications | GET | `/api/v1/notifications` | Lấy thông báo từ `notifications` + `user_notifications`; FE đã gắn chuông thông báo | Implemented |
+| Notifications | GET | `/api/v1/notifications/stream` | SSE stream nhận notification realtime | Implemented |
+| Notifications | PATCH | `/api/v1/notifications/:id/read` | Đánh dấu một thông báo đã đọc | Implemented |
+| Notifications | PATCH | `/api/v1/notifications/read-all` | Đánh dấu tất cả thông báo đã đọc | Implemented |
+| Internal | POST | `/api/v1/internal/notifications/push` | DB pipeline báo BE đẩy notification qua SSE | Implemented/Internal |
+| Stats | GET | `/api/v1/stats/topics/trends` | Lấy topic xu hướng từ `topics.trending`; FE đã có trang Trend | Implemented |
+| Ratings | POST | `/api/v1/papers/:id/rating` | Lưu điểm vào `user_paper_interactions.rating` và cập nhật `papers.avg_rating` | Implemented |
+| Ratings | GET | `/api/v1/papers/:id/rating/me` | Lấy điểm của user từ `user_paper_interactions` | Implemented |
 
 ---
 
@@ -1132,60 +1269,13 @@ Yêu cầu hoàn thành:
 
 ---
 
-# 13. Testing Strategy
-
-## Frontend Testing
-
-- React Testing Library
-- Test Login/Register forms
-- Test SearchBar
-- Test PaperCard favorite action
-
----
-
-## Backend Testing
-
-- Jest
-- Supertest
-- Test auth APIs
-- Test protected middleware
-- Test paper/topic/favorite APIs
-
----
-
-## Database Testing
-
-- Test Alembic migration
-- Test SQLAlchemy relationships
-- Test unique constraints
-
----
-
-## AI Testing
-
-- Unit test `_build_word_freq`
-- Unit test `_cosine_similarity`
-- Unit test `check_duplicate`
-- Mock Groq API khi test summary
-
----
-
-## API Testing
-
-- Postman collection
-- Test success cases
-- Test error cases
-- Test protected routes without token
-
----
-
-# 14. Development Environment
+# 13. Development Environment
 
 ## Required Tools
 
 - Node.js
 - npm
-- Python 3.10+
+- Python 3.11 khuyến nghị cho `ai/` và `database/`
 - PostgreSQL hoặc Neon PostgreSQL
 - Alembic
 
@@ -1198,6 +1288,17 @@ cd frontend
 npm install
 npm run dev
 ```
+
+Frontend `.env` optional:
+
+```env
+VITE_API_URL=http://localhost:8000/api/v1
+```
+
+Ghi chú:
+
+- Nếu không có `frontend/.env`, FE dùng default `http://localhost:8000/api/v1`.
+- `VITE_API_URL` phải bao gồm `/api/v1`.
 
 ---
 
@@ -1212,11 +1313,34 @@ npm run dev
 Backend `.env`:
 
 ```env
-PORT=
-DATABASE_URL=
-JWT_SECRET=
-JWT_EXPIRES_IN=
+# Required: Backend không chạy nếu thiếu 2 biến này.
+DATABASE_URL=postgresql://<username>:<password>@<host>/<dbname>?sslmode=require
+JWT_SECRET=change_me_to_a_long_random_secret
+
+# Optional: app/server defaults.
+NODE_ENV=development
+PORT=8000
+JWT_EXPIRES_IN=7d
+AI_SERVICE_URL=http://localhost:8001
+
+# Optional: realtime notification DB pipeline -> BE -> FE.
+# Phải khớp với BACKEND_INTERNAL_SECRET trong database/.env.
+INTERNAL_API_SECRET=change_me_internal_secret
+
+# Optional: manual crawler settings.
+# Có thể bỏ trống DATABASE_PIPELINE_PYTHON để Backend tự ưu tiên database/.venv.
+DATABASE_PIPELINE_PYTHON=
+MANUAL_CRAWLER_TIMEOUT_MS=300000
+MANUAL_CRAWLER_COOLDOWN_MS=20000
 ```
+
+Ghi chú:
+
+- Backend không dùng `ARXIV_MAX_RESULTS` và `CRAWLER_CRON`; crawler/scheduler chính nằm ở module `database`.
+- `DATABASE_URL` nên trỏ cùng database với `database/.env`.
+- `AI_SERVICE_URL` mặc định là `http://localhost:8001`.
+- `INTERNAL_API_SECRET` dùng cho endpoint nội bộ `/api/v1/internal/notifications/push`.
+- `MANUAL_CRAWLER_COOLDOWN_MS` mặc định 20 giây để tránh spam arXiv khi bấm tải lại thủ công.
 
 ---
 
@@ -1224,8 +1348,8 @@ JWT_EXPIRES_IN=
 
 ```bash
 cd database
-python -m venv venv
-venv\Scripts\activate
+py -3.11 -m venv .venv
+.\.venv\Scripts\activate
 pip install -r requirements.txt
 alembic upgrade head
 ```
@@ -1233,8 +1357,25 @@ alembic upgrade head
 Database `.env`:
 
 ```env
+# Required: dùng cho migration, seed, crawler và hourly pipeline.
 DATABASE_URL=postgresql://<username>:<password>@<host>/<dbname>?sslmode=require
+
+# Optional: realtime notification DB pipeline -> BE -> FE.
+# Nếu bỏ trống, notification vẫn lưu DB nhưng FE không nhận realtime ngay qua SSE.
+# BACKEND_INTERNAL_SECRET phải khớp INTERNAL_API_SECRET trong backend/.env.
+BACKEND_NOTIFICATION_PUSH_URL=http://localhost:8000/api/v1/internal/notifications/push
+BACKEND_INTERNAL_SECRET=change_me_internal_secret
+
+# Optional: override query lấy paper mới nhất từ arXiv.
+# Bỏ trống để dùng query mặc định từ 10 topic trong database/crawler/arxiv_client.py.
+ARXIV_LATEST_QUERY=
 ```
+
+Ghi chú:
+
+- `DATABASE_URL` dùng cho SQLAlchemy, Alembic, seed scripts, crawler và hourly pipeline.
+- `BACKEND_NOTIFICATION_PUSH_URL` và `BACKEND_INTERNAL_SECRET` dùng để pipeline báo Backend đẩy notification realtime qua SSE.
+- `ARXIV_LATEST_QUERY` chỉ cần cấu hình khi muốn override query mặc định.
 
 ---
 
@@ -1242,6 +1383,8 @@ DATABASE_URL=postgresql://<username>:<password>@<host>/<dbname>?sslmode=require
 
 ```bash
 cd ai
+py -3.11 -m venv .venv
+.\.venv\Scripts\activate
 pip install -r requirements.txt
 python run_summarizer_batch.py --batch-size 20
 ```
@@ -1249,12 +1392,17 @@ python run_summarizer_batch.py --batch-size 20
 AI `.env`:
 
 ```env
-GROQ_API_KEY=
+GROQ_API_KEY=gsk_your_groq_api_key_here
 ```
+
+Ghi chú:
+
+- `GROQ_API_KEY` dùng cho summary batch, endpoint `POST /summarize` và AI topic trend ranking.
+- Duplicate checker và related finder không cần Groq key.
 
 ---
 
-# 15. Deployment Strategy
+# 14. Deployment Strategy
 
 ## Local Development
 
@@ -1275,7 +1423,7 @@ GROQ_API_KEY=
 
 ---
 
-# 16. CI/CD
+# 15. CI/CD
 
 ## Development Flow
 
@@ -1288,16 +1436,28 @@ feature/* -> dev -> main
 ## Git Commit Convention
 
 ```txt
-feat:
-fix:
-docs:
-refactor:
-chore:
+FE: <nội dung thay đổi frontend>
+BE: <nội dung thay đổi backend>
+DB: <nội dung thay đổi database/crawler/migration>
+AI: <nội dung thay đổi AI service>
+DOC: <nội dung thay đổi tài liệu>
+General: <nội dung thay đổi nhiều module hoặc cấu hình chung>
+```
+
+Ví dụ:
+
+```txt
+FE: update dashboard refresh state and notification bell
+BE: add manual crawler APIs and notification SSE
+DB: add hourly pipeline notification and related paper jobs
+AI: add related finder and trend analyzer
+DOC: update deployment and module guides
+General: integrate crawler pipeline, notifications, and paper discovery
 ```
 
 ---
 
-# 17. Logging & Monitoring
+# 16. Logging & Monitoring
 
 ## Backend Logging
 
@@ -1315,7 +1475,7 @@ chore:
 
 ---
 
-# 18. Security Checklist
+# 17. Security Checklist
 
 - Password hashing
 - JWT validation
@@ -1328,7 +1488,7 @@ chore:
 
 ---
 
-# 19. Extension Features
+# 18. Extension Features
 
 - AI chatbot for paper Q&A
 - Recommendation system
@@ -1340,7 +1500,7 @@ chore:
 
 ---
 
-# 20. Scope Limitations
+# 19. Scope Limitations
 
 Project tập trung vào:
 
@@ -1362,7 +1522,7 @@ Project không bao gồm trong phạm vi chính:
 
 ---
 
-# 21. Roadmap
+# 20. Roadmap
 
 ## Phase 1
 
@@ -1404,7 +1564,7 @@ Project không bao gồm trong phạm vi chính:
 
 ---
 
-# 22. Coding Conventions
+# 21. Coding Conventions
 
 ## Frontend Naming
 
@@ -1436,7 +1596,7 @@ Project không bao gồm trong phạm vi chính:
 
 ---
 
-# 23. Integration Contract
+# 22. Integration Contract
 
 ## Paper Response Mapping
 
@@ -1466,7 +1626,7 @@ Yêu cầu đồng bộ:
 
 ---
 
-# 24. Definition of Done
+# 23. Definition of Done
 
 Một feature được xem là hoàn thành khi:
 

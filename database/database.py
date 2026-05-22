@@ -11,7 +11,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Kiểm tra an toàn: Đảm bảo file .env đã được cấu hình đúng
 if not DATABASE_URL:
-    raise ValueError("Lỗi: Không tìm thấy DATABASE_URL trong file .env. Vui lòng kiểm tra lại!")
+    raise ValueError("Loi: Khong tim thay DATABASE_URL trong file .env. Vui long kiem tra lai!")
 
 # 3. Khởi tạo Engine - "Động cơ" giao tiếp với PostgreSQL trên Neon
 # echo=False để tắt việc in các câu lệnh SQL thuần ra terminal

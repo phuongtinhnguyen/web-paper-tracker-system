@@ -95,6 +95,51 @@ GET http://localhost:8000/api/v1/papers/1
 ### Search
 GET http://localhost:8000/api/v1/papers/search?q=machine&page=1&limit=10
 
+### Lay paper lien quan
+GET http://localhost:8000/api/v1/papers/1/related?limit=5
+
+### Lay paper trung hoac gan giong
+GET http://localhost:8000/api/v1/papers/1/matches?limit=5
+
+### Cham diem paper
+POST http://localhost:8000/api/v1/papers/1/rating
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "rating": 8
+}
+
+### Lay diem paper cua user dang login
+GET http://localhost:8000/api/v1/papers/1/rating/me
+Authorization: Bearer <access_token>
+
+### Lay topic xu huong
+GET http://localhost:8000/api/v1/stats/topics/trends?limit=10
+
+### Chay crawler thu cong lay 5 paper moi nhat va tu gan topic
+POST http://localhost:8000/api/v1/crawler/run
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "max_results": 5
+}
+
+### Lay trang thai crawler thu cong
+GET http://localhost:8000/api/v1/crawler/status
+Authorization: Bearer <access_token>
+
+### Chay crawler thu cong cho mot topic
+POST http://localhost:8000/api/v1/crawler/run
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "topic_id": 1,
+  "max_results": 5
+}
+
 ### Them muc yeu thich
 POST http://localhost:8000/api/v1/papers/favorite/1
 Authorization: Bearer <access_token>
@@ -106,3 +151,49 @@ Authorization: Bearer <access_token>
 ### Lay muc yeu thich
 GET http://localhost:8000/api/v1/favorites?page=1&limit=5
 Authorization: Bearer <access_token>
+
+### Lay lich su doc
+GET http://localhost:8000/api/v1/history?page=1&limit=5
+Authorization: Bearer <access_token>
+
+### Tim trong lich su doc
+GET http://localhost:8000/api/v1/history?page=1&limit=5&search=machine
+Authorization: Bearer <access_token>
+
+### Xoa 1 muc lich su doc
+DELETE http://localhost:8000/api/v1/history/1
+Authorization: Bearer <access_token>
+
+### Xoa toan bo lich su doc
+DELETE http://localhost:8000/api/v1/history
+Authorization: Bearer <access_token>
+
+### Lay danh sach thong bao
+GET http://localhost:8000/api/v1/notifications?page=1&limit=10
+Authorization: Bearer <access_token>
+
+### Lay thong bao chua doc
+GET http://localhost:8000/api/v1/notifications?page=1&limit=10&unread_only=true
+Authorization: Bearer <access_token>
+
+### Notification SSE stream - dung tren browser/EventSource
+# GET http://localhost:8000/api/v1/notifications/stream?token=<access_token>
+
+### Danh dau 1 thong bao da doc
+PATCH http://localhost:8000/api/v1/notifications/1/read
+Authorization: Bearer <access_token>
+
+### Danh dau tat ca thong bao da doc
+PATCH http://localhost:8000/api/v1/notifications/read-all
+Authorization: Bearer <access_token>
+
+### Internal push notification tu DB pipeline sang BE
+POST http://localhost:8000/api/v1/internal/notifications/push
+x-internal-api-secret: <internal_api_secret>
+Content-Type: application/json
+
+{
+  "event": "NEW_NOTIFICATION",
+  "notification_ids": [1],
+  "notification_count": 1
+}

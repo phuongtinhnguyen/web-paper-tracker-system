@@ -29,7 +29,7 @@ database_url = os.getenv("DATABASE_URL")
 if database_url:
     config.set_main_option("sqlalchemy.url", database_url)
 else:
-    raise ValueError("Chưa cấu hình DATABASE_URL trong file .env!")
+    raise ValueError("Chua cau hinh DATABASE_URL trong file .env!")
 # ========== KẾT THÚC ĐOẠN THÊM MỚI ==========
 
 # 2. CHỈNH SỬA TARGET METADATA

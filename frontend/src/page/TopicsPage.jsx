@@ -1,9 +1,14 @@
 import { useState, useEffect } from "react";
 import PaperCard from "../components/PaperCard";
-import { Loader2, LayoutGrid, Hash } from "lucide-react";
+import { Loader2, LayoutGrid, Hash, RefreshCw } from "lucide-react";
 import Pagination from "../components/Pagination";
 import { getTopics, getPapersByTopic } from "../services/API";
 import { useFavorites } from "../contexts/FavoritesContext";
+import { useCrawler } from "../contexts/CrawlerContext";
+import {
+  getPaperUpdateTopicId,
+  subscribePaperDataUpdated,
+} from "../utils/paperRefreshEvent";
 
 function extractTopics(response) {
   return response.data?.data?.topics ?? response.data?.topics ?? response.data ?? [];
@@ -16,13 +21,16 @@ export default function TopicPage() {
   const [loadingTopics, setLoadingTopics] = useState(true);
   const [loadingPapers, setLoadingPapers] = useState(false);
   const [error, setError] = useState(null);
+  const [refreshMessage, setRefreshMessage] = useState(null);
 
   const { favoriteIds, toggleFavorite } = useFavorites();
+  const { crawlerCooldownSeconds, isCrawlerRunning, startCrawler } = useCrawler();
 
   // Phân trang
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [refreshTick, setRefreshTick] = useState(0);
   const postsPerPage = 5;
 
   // Lấy danh sách Topics khi vào trang
@@ -41,6 +49,22 @@ export default function TopicPage() {
     fetchTopics();
   }, []);
 
+  useEffect(() => {
+    return subscribePaperDataUpdated((event) => {
+      const updatedTopicId = getPaperUpdateTopicId(event.detail);
+
+      if (
+        selectedTopic?.id &&
+        updatedTopicId &&
+        String(updatedTopicId) !== String(selectedTopic.id)
+      ) {
+        return;
+      }
+
+      setRefreshTick((value) => value + 1);
+    });
+  }, [selectedTopic?.id]);
+
   
   useEffect(() => {
     if (!selectedTopic) return;
@@ -56,13 +80,16 @@ export default function TopicPage() {
         const list = result.data ?? [];
         const pagination = result.pagination ?? {};
 
+        const nextTotal = pagination.total ?? result.total ?? list.length;
+
         setPapers(Array.isArray(list) ? list : []);
-        setTotal(pagination.total ?? result.total ?? list.length);
+        setTotal(nextTotal);
         setTotalPages(
           pagination.total_pages ??
             result.totalPages ??
-            Math.ceil((pagination.total ?? result.total ?? list.length) / postsPerPage)
+            Math.ceil(nextTotal / postsPerPage)
         );
+
       } catch {
         setError("Không thể tải bài báo.");
       } finally {
@@ -71,12 +98,40 @@ export default function TopicPage() {
     };
 
     fetchPapers();
-  }, [selectedTopic, currentPage]);
+  }, [selectedTopic, currentPage, refreshTick]);
 
   const handleTopicClick = (topic) => {
     setSelectedTopic(topic);
     setCurrentPage(1);
     setPapers([]);
+    setRefreshMessage(null);
+  };
+
+  const handleRefreshSelectedTopic = async () => {
+    if (!selectedTopic) return;
+
+    setError(null);
+    setRefreshMessage(null);
+
+    if (crawlerCooldownSeconds > 0) {
+      setRefreshMessage(`Vui lòng chờ ${crawlerCooldownSeconds}s trước khi tải lại tiếp.`);
+      return;
+    }
+
+    try {
+      await startCrawler({
+        topic_id: selectedTopic.id,
+        max_results: 5,
+      });
+    } catch (err) {
+      if (err.response?.status === 409) {
+        setError("Đang tải lại dữ liệu, vui lòng chờ hoàn tất.");
+      } else if (err.response?.status === 429) {
+        setRefreshMessage("Vui lòng chờ khoảng 20 giây trước khi tải lại tiếp.");
+      } else {
+        setError("Không thể tải lại dữ liệu mới cho chủ đề này.");
+      }
+    }
   };
 
   if (loadingTopics) return (
@@ -131,14 +186,41 @@ export default function TopicPage() {
           </div>
         ) : (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex items-center justify-between px-2">
-              <h3 className="text-lg font-bold text-gray-700">
-                Bài báo về: <span className="text-green-600">#{selectedTopic.name}</span>
-              </h3>
+            <div className="flex items-center justify-between gap-3 px-2">
+              <div className="flex items-center gap-3 flex-wrap">
+                <h3 className="text-lg font-bold text-gray-700">
+                  Bài báo về: <span className="text-green-600">#{selectedTopic.name}</span>
+                </h3>
+                <button
+                  type="button"
+                  onClick={handleRefreshSelectedTopic}
+                  disabled={isCrawlerRunning || crawlerCooldownSeconds > 0}
+                  className="inline-flex items-center gap-2 px-3 py-2 bg-white border border-green-100 text-green-700 rounded-xl text-xs font-bold shadow-sm hover:bg-green-50 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+                  title={`Tải lại 5 paper mới cho ${selectedTopic.name}`}
+                >
+                  <RefreshCw
+                    size={15}
+                    className={isCrawlerRunning ? "animate-spin" : ""}
+                  />
+                  <span>
+                    {isCrawlerRunning
+                      ? "Đang tải lại"
+                      : crawlerCooldownSeconds > 0
+                        ? `Chờ ${crawlerCooldownSeconds}s`
+                        : "Tải lại"}
+                  </span>
+                </button>
+              </div>
               <span className="text-xs font-bold text-gray-400 bg-gray-100 px-3 py-1 rounded-full">
                 {total} kết quả
               </span>
             </div>
+
+            {(refreshMessage || crawlerCooldownSeconds > 0) && !isCrawlerRunning && (
+              <div className="rounded-2xl border border-green-100 bg-green-50 px-5 py-3 text-sm font-semibold text-green-700">
+                {refreshMessage || `Vui lòng chờ ${crawlerCooldownSeconds}s trước khi tải lại tiếp.`}
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {papers.length > 0 ? (

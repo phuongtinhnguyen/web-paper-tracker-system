@@ -8,7 +8,6 @@ from groq import Groq
 from sqlalchemy.orm import Session
 
 load_dotenv()
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 _client = None
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -27,6 +26,13 @@ STOPWORDS = {
     "by", "from", "via", "using", "based", "propose",
     "show", "also", "paper", "method", "model", "results",
 }
+
+
+def _safe_print(message: str) -> None:
+    """Print logs without crashing on Windows terminals with legacy encodings."""
+    encoding = sys.stdout.encoding or "utf-8"
+    safe_message = message.encode(encoding, errors="replace").decode(encoding)
+    print(safe_message)
 
 
 def _get_paper_model():
@@ -88,10 +94,10 @@ def summarize_pending_papers(db: Session, batch_size: int = 20):
             paper.summary = summarize_abstract(paper.abstract)
             db.commit()
             success_count += 1
-            print(f"[AI] Đã tóm tắt: {paper.title[:60]}...")
+            _safe_print(f"[AI] Da tom tat: {paper.title[:60]}...")
         except Exception as error:
             db.rollback()
-            print(f"[AI] Lỗi tóm tắt: {error}")
+            _safe_print(f"[AI] Loi tom tat: {error}")
 
     return success_count
 
@@ -124,17 +130,14 @@ def _cosine_similarity(freq_a: dict, freq_b: dict) -> float:
 
 
 def _duplicate_status(score: float) -> str:
-    if score >= 0.90:
-        return "Trùng hoàn toàn"
-
-    return "Gần giống"
+    return "Trung hoan toan" if score >= 0.90 else "Gan giong"
 
 
 def check_duplicate(
     db: Session,
     new_paper_title: str,
     new_paper_abstract: str,
-    threshold: float = 0.75,
+    threshold: float = 0.50,
     exclude_paper_id: int | None = None,
     limit: int = 5,
 ):
@@ -178,6 +181,75 @@ def check_duplicate(
         "matches": matches,
     }
 
+
+def find_related_papers(
+    db: Session,
+    paper_id: int,
+    threshold: float = 0.20,
+    upper_threshold: float = 0.50,
+    limit: int = 5,
+):
+    """Find related papers in the same topic using title + abstract similarity."""
+    Paper = _get_paper_model()
+
+    source_paper = db.query(Paper).filter(Paper.id == paper_id).first()
+
+    if not source_paper:
+        return {
+            "paper_id": paper_id,
+            "related_count": 0,
+            "highest_similarity": 0,
+            "related_papers": [],
+        }
+
+    if not source_paper.topic_id:
+        return {
+            "paper_id": paper_id,
+            "related_count": 0,
+            "highest_similarity": 0,
+            "related_papers": [],
+        }
+
+    source_text = f"{source_paper.title or ''} {source_paper.abstract or ''}"
+    source_freq = _build_word_freq(source_text)
+    candidates = (
+        db.query(Paper)
+        .filter(Paper.id != source_paper.id)
+        .filter(Paper.topic_id == source_paper.topic_id)
+        .all()
+    )
+
+    highest_similarity = 0.0
+    related_papers = []
+
+    for candidate in candidates:
+        candidate_text = f"{candidate.title or ''} {candidate.abstract or ''}"
+        candidate_freq = _build_word_freq(candidate_text)
+        score = _cosine_similarity(source_freq, candidate_freq)
+
+        if score > highest_similarity:
+            highest_similarity = score
+
+        if threshold <= score < upper_threshold:
+            related_papers.append({
+                "id": candidate.id,
+                "title": candidate.title,
+                "pdf_url": candidate.pdf_url,
+                "topic_id": candidate.topic_id,
+                "similarity": round(score * 100, 2),
+            })
+
+    related_papers.sort(key=lambda item: item["similarity"], reverse=True)
+    related_papers = related_papers[:limit]
+
+    return {
+        "paper_id": source_paper.id,
+        "related_count": len(related_papers),
+        "highest_similarity": round(highest_similarity * 100, 2),
+        "related_papers": related_papers,
+    }
+
+
 def analyze_topic_trends(topic_titles: list) -> dict:
     """
     Phân tích xu hướng theo chủ đề bằng Groq AI.
@@ -213,7 +285,7 @@ Respond in JSON format only, no markdown:
 }}"""
 
     try:
-        response = client.chat.completions.create(
+        response = _get_groq_client().chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=500,
@@ -230,13 +302,15 @@ Respond in JSON format only, no markdown:
         return {
             "ranked_topics": result.get("ranked_topics", topic_titles),
             "analysis": result.get("analysis", ""),
-            "trending_keywords": result.get("trending_keywords", [])
+            "trending_keywords": result.get("trending_keywords", []),
+            "source": "ai",
         }
 
     except Exception as e:
-        print(f"[AI] Error analyzing trends: {e}")
+        _safe_print(f"[AI] Error analyzing trends: {e}")
         return {
             "ranked_topics": topic_titles,
             "analysis": "Không thể phân tích xu hướng",
-            "trending_keywords": []
+            "trending_keywords": [],
+            "source": "fallback",
         }

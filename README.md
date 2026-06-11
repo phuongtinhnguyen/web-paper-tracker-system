@@ -183,7 +183,7 @@ Script sẽ start:
 
 ```txt
 Backend:  http://localhost:8000/api/v1/health
-Frontend: http://localhost:5173
+Frontend: http://localhost:5713
 AI:       http://localhost:8001/docs
 Database: hourly pipeline scheduler
 ```
@@ -273,6 +273,119 @@ database  -> SQLAlchemy models, Alembic migrations, arXiv crawler, hourly pipeli
 ai        -> Groq summary service, duplicate checker, related finder, trend analyzer
 ```
 
+### 2.1. Sơ Đồ Kiến Trúc Tổng Thể
+
+```mermaid
+flowchart LR
+    User["Người dùng"]
+    Arxiv["arXiv API"]
+    Groq["Groq API"]
+
+    subgraph FEZone["FE - frontend/"]
+        FE["Frontend App<br/>React + Vite"]
+        Bell["NotificationBell<br/>SSE client"]
+    end
+
+    subgraph BEZone["BE - backend/"]
+        BE["Backend API<br/>Express /api/v1"]
+        Push["Internal notification webhook<br/>/api/v1/internal/notifications/push"]
+        Stream["SSE stream<br/>/api/v1/notifications/stream"]
+    end
+
+    subgraph DBZone["DB - database/"]
+        DB["PostgreSQL / Neon"]
+        Scheduler["Database Pipeline<br/>run_hourly_pipeline.py"]
+    end
+
+    subgraph AIZone["AI - ai/"]
+        AISvc["AI Service<br/>FastAPI :8001"]
+        AIModule["AI Module<br/>paper_ai.py"]
+    end
+
+    User --> FE
+    FE --> BE
+    BE --> DB
+    %% Layout order: User -> FE -> BE -> DB -> AI
+    User ~~~ FE
+    FE ~~~ BE
+    BE ~~~ DB
+    DB ~~~ AISvc
+    BE -.->|summary request| AISvc
+    BE -.->|JSON response| FE
+    FE -.->|rendered data| User
+
+    Scheduler --> Arxiv
+    Arxiv -.->|paper feed| Scheduler
+    Scheduler --> DB
+    Scheduler --> AIModule
+    Scheduler --> Push
+    Push --> BE
+    DB -.->|papers / topics / notifications| BE
+    AISvc --> Groq
+    Groq -.->|AI completion| AISvc
+    AISvc -.->|summary response| BE
+    AIModule --> Groq
+    Groq -.->|AI completion| AIModule
+    AIModule -.->|summary / related / trends| Scheduler
+    BE --> Stream
+    Stream -.->|SSE event| Bell
+    Bell --> FE
+```
+
+### 2.2. Sơ Đồ Kiến Trúc Tổng Thể - PlantUML
+
+```plantuml
+@startuml
+top to bottom direction
+
+rectangle "Người dùng" as User
+
+rectangle "FE - frontend/\nFrontend App\nReact + Vite" as FE
+rectangle "NotificationBell\nSSE client" as Bell
+
+rectangle "BE - backend/\nBackend API\nExpress /api/v1" as BE
+rectangle "Internal notification webhook\n/api/v1/internal/notifications/push" as Push
+rectangle "SSE stream\n/api/v1/notifications/stream" as Stream
+
+database "DB - database/\nPostgreSQL / Neon" as DB
+rectangle "Database Pipeline\nrun_hourly_pipeline.py" as Scheduler
+
+rectangle "AI - ai/\nAI Service\nFastAPI :8001" as AISvc
+rectangle "AI Module\npaper_ai.py" as AIModule
+
+rectangle "arXiv API" as Arxiv
+rectangle "Groq API" as Groq
+
+User --> FE
+FE --> BE
+BE --> DB
+BE --> AISvc
+AISvc --> Groq
+
+Scheduler --> Arxiv
+Arxiv ..> Scheduler : paper feed
+Scheduler --> DB
+Scheduler --> AIModule
+Scheduler --> Push
+Push --> BE
+
+BE --> Stream
+Stream ..> Bell : SSE event
+Bell --> FE
+
+BE ..> FE : JSON response
+FE ..> User : rendered data
+DB ..> BE : papers / topics / notifications
+
+Groq ..> AISvc : AI completion
+AISvc ..> BE : summary response
+
+AIModule --> Groq
+Groq ..> AIModule : AI completion
+AIModule ..> Scheduler : summary / related / trends
+@enduml
+```
+
 Luồng chạy chính:
 
 ```txt
@@ -325,7 +438,7 @@ Tài liệu chi tiết nằm ở từng module:
 
 | Service | URL |
 | --- | --- |
-| Frontend | `http://localhost:5173` |
+| Frontend | `http://localhost:5713` |
 | Backend health | `http://localhost:8000/api/v1/health` |
 | Backend API base | `http://localhost:8000/api/v1` |
 | AI docs | `http://localhost:8001/docs` |

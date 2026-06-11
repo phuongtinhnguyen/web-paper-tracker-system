@@ -138,7 +138,80 @@ backend/
 
 ## 3. Kiến Trúc
 
-### 3.1. Request Flow
+### 3.1. Sơ Đồ Kiến Trúc Tổng Thể
+
+```mermaid
+flowchart TB
+    Client["Frontend / API Client"] --> App["Express App<br/>src/app.js"]
+    App --> Router["Root Router<br/>/api/v1"]
+    Router --> Middlewares["Middlewares<br/>auth / optionalAuth / validate / error"]
+    Middlewares --> Controllers["Controllers<br/>request / response"]
+    Controllers --> Services["Services<br/>business logic"]
+    Services --> Repositories["Repositories<br/>SQL queries"]
+    Repositories --> DB["PostgreSQL / Neon"]
+    DB -.->|rows| Repositories
+    Repositories -.->|records| Services
+    Services -.->|result| Controllers
+    Controllers -.->|JSON response| Client
+
+    Services --> AI["AI Service<br/>POST /summarize"]
+    AI -.->|summary| Services
+    Services --> Pipeline["Database Pipeline<br/>manual crawler process"]
+    Pipeline -.->|job status| Services
+
+    DBPipeline["Database Pipeline"] --> InternalWebhook["Internal API<br/>/api/v1/internal/notifications/push"]
+    InternalWebhook --> NotificationService["Notification Service"]
+    NotificationService --> SSE["SSE Hub<br/>notification.sse.js"]
+    SSE -.->|SSE event| Frontend["Frontend EventSource"]
+```
+
+#### 3.1.1. Sơ Đồ Kiến Trúc Tổng Thể - PlantUML
+
+```plantuml
+@startuml
+top to bottom direction
+
+rectangle "Frontend / API Client" as Client
+rectangle "Express App\nsrc/app.js" as App
+rectangle "Root Router\n/api/v1" as Router
+rectangle "Middlewares\nauth / optionalAuth / validate / error" as Middlewares
+rectangle "Controllers\nrequest / response" as Controllers
+rectangle "Services\nbusiness logic" as Services
+rectangle "Repositories\nSQL queries" as Repositories
+database "PostgreSQL / Neon" as DB
+rectangle "AI Service\nPOST /summarize" as AI
+rectangle "Database Pipeline\nmanual crawler process" as Pipeline
+rectangle "Database Pipeline" as DBPipeline
+rectangle "Internal API\n/api/v1/internal/notifications/push" as InternalWebhook
+rectangle "Notification Service" as NotificationService
+rectangle "SSE Hub\nnotification.sse.js" as SSE
+rectangle "Frontend EventSource" as Frontend
+
+Client --> App
+App --> Router
+Router --> Middlewares
+Middlewares --> Controllers
+Controllers --> Services
+Services --> Repositories
+Repositories --> DB
+DB ..> Repositories : rows
+Repositories ..> Services : records
+Services ..> Controllers : result
+Controllers ..> Client : JSON response
+
+Services --> AI
+AI ..> Services : summary
+Services --> Pipeline
+Pipeline ..> Services : job status
+
+DBPipeline --> InternalWebhook
+InternalWebhook --> NotificationService
+NotificationService --> SSE
+SSE ..> Frontend : SSE event
+@enduml
+```
+
+### 3.2. Request Flow
 
 ```txt
 Client / Frontend
@@ -165,7 +238,7 @@ repository
 PostgreSQL/Neon
 ```
 
-### 3.2. Layer Trách Nhiệm
+### 3.3. Layer Trách Nhiệm
 
 | Layer | Trách nhiệm |
 | --- | --- |
@@ -178,7 +251,7 @@ PostgreSQL/Neon
 
 Controller không query database trực tiếp. Service không biết chi tiết HTTP response.
 
-### 3.3. API Prefix
+### 3.4. API Prefix
 
 Toàn bộ API backend dùng prefix:
 
@@ -194,7 +267,7 @@ POST /api/v1/auth/login
 GET /api/v1/papers
 ```
 
-### 3.4. Database Ownership
+### 3.5. Database Ownership
 
 Backend không tự migrate schema.
 

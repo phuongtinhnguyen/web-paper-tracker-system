@@ -63,7 +63,7 @@ def _get_groq_client():
 
 
 def summarize_abstract(abstract: str) -> str:
-    """Use Groq AI to summarize an English abstract into Vietnamese."""
+    """Use Groq AI to summarize an English abstract into concise English."""
     response = _get_groq_client().chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[

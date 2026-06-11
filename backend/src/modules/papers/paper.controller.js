@@ -2,6 +2,51 @@ const asyncHandler = require("../../utils/asyncHandler");
 const paperService = require("./paper.service");
 const { paginated, success } = require("../../utils/response");
 
+/*
+Example return:
+{
+  "success": true,
+  "message": "OK",
+  "data": [
+    {
+      "id": 1,
+      "arxiv_id": "2605.10938v1",
+      "title": "ELF: Embedded Language...",
+      "abstract": "Diffusion and flow-based models...",
+      "summary": "This paper introduces...",
+      "authors": "Keya Hu, Lintao Qiu",
+      "published_date": "2026-05-11T17:59:29.000Z",
+      "pdf_url": "http://arxiv.org/abs/2605.10938v1",
+      "avg_rating": 4.5,
+      "created_at": "2026-05-12T18:12:10.000Z",
+      "topic_id": 1,
+      "is_favorite": true,
+      "is_read": false
+    },
+    {
+      "id": 2,
+      "arxiv_id": "2605.10934v1",
+      "title": "Variational Inference...",
+      "abstract": "Modelling extreme events...",
+      "summary": null,
+      "authors": "Yaman Kindap, Manfred...",
+      "published_date": "2026-05-11T17:58:45.000Z",
+      "pdf_url": "http://arxiv.org/abs/2605.10934v1",
+      "avg_rating": null,
+      "created_at": "2026-05-12T18:12:10.000Z",
+      "topic_id": 1,
+      "is_favorite": false,
+      "is_read": true
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 2,
+    "total": 10,
+    "total_pages": 5
+  }
+}
+*/
 const getPapers = asyncHandler(async (req, res) => {
   const { papers, pagination } = await paperService.getPapers(
     req.validated.query,

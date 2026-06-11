@@ -240,7 +240,7 @@ def main():
         print("", flush=True)
         print("[ready] Started selected services.", flush=True)
         print("[ready] Backend:  http://localhost:8000/api/v1/health", flush=True)
-        print("[ready] Frontend: http://localhost:5173", flush=True)
+        print("[ready] Frontend: http://localhost:5713", flush=True)
         print("[ready] AI:       http://localhost:8001/docs", flush=True)
         print("[ready] Press Ctrl+C to stop all services.", flush=True)
 

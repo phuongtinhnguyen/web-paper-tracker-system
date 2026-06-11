@@ -43,7 +43,86 @@ Ghi chú:
 
 ## 3. Kiến Trúc
 
-### 3.1. Luồng Summary Batch
+### 3.1. Sơ Đồ Kiến Trúc Tổng Thể
+
+```mermaid
+flowchart TB
+    Backend["Backend<br/>POST /api/v1/papers/:id/summarize"] --> FastAPI["FastAPI Service<br/>app.py"]
+    FastAPI --> PaperAI["paper_ai.py"]
+    PaperAI -.->|summary result| FastAPI
+    FastAPI -.->|summary response| Backend
+    Scripts["CLI Scripts<br/>run_summarizer_batch.py<br/>run_duplicate_checker.py"] --> PaperAI
+    PaperAI -.->|CLI result| Scripts
+    DBPipeline["Database Pipeline<br/>run_hourly_pipeline.py"] --> PaperAI
+    PaperAI -.->|batch / analysis result| DBPipeline
+
+    PaperAI --> Summary["summarize_abstract<br/>summarize_pending_papers"]
+    PaperAI --> Duplicate["check_duplicate<br/>cosine similarity"]
+    PaperAI --> Related["find_related_papers<br/>same topic similarity"]
+    PaperAI --> Trends["analyze_topic_trends"]
+
+    Summary --> Groq["Groq API<br/>llama-3.3-70b-versatile"]
+    Groq -.->|summary completion| Summary
+    Trends --> Groq
+    Groq -.->|trend JSON| Trends
+    Summary --> DB["PostgreSQL / Neon<br/>papers.summary"]
+    DB -.->|pending papers| Summary
+    DB -.->|paper candidates| Duplicate
+    DB -.->|same-topic papers| Related
+    Duplicate --> DB
+    Related --> DB
+    DBPipeline --> DB
+```
+
+#### 3.1.1. Sơ Đồ Kiến Trúc Tổng Thể - PlantUML
+
+```plantuml
+@startuml
+top to bottom direction
+
+rectangle "Backend\nPOST /api/v1/papers/:id/summarize" as Backend
+rectangle "FastAPI Service\napp.py" as FastAPI
+rectangle "paper_ai.py" as PaperAI
+rectangle "CLI Scripts\nrun_summarizer_batch.py\nrun_duplicate_checker.py" as Scripts
+rectangle "Database Pipeline\nrun_hourly_pipeline.py" as DBPipeline
+
+rectangle "summarize_abstract\nsummarize_pending_papers" as Summary
+rectangle "check_duplicate\ncosine similarity" as Duplicate
+rectangle "find_related_papers\nsame topic similarity" as Related
+rectangle "analyze_topic_trends" as Trends
+
+rectangle "Groq API\nllama-3.3-70b-versatile" as Groq
+database "PostgreSQL / Neon\npapers.summary" as DB
+
+Backend --> FastAPI
+FastAPI --> PaperAI
+PaperAI ..> FastAPI : summary result
+FastAPI ..> Backend : summary response
+Scripts --> PaperAI
+PaperAI ..> Scripts : CLI result
+DBPipeline --> PaperAI
+PaperAI ..> DBPipeline : batch / analysis result
+
+PaperAI --> Summary
+PaperAI --> Duplicate
+PaperAI --> Related
+PaperAI --> Trends
+
+Summary --> Groq
+Groq ..> Summary : summary completion
+Trends --> Groq
+Groq ..> Trends : trend JSON
+Summary --> DB
+DB ..> Summary : pending papers
+DB ..> Duplicate : paper candidates
+DB ..> Related : same-topic papers
+Duplicate --> DB
+Related --> DB
+DBPipeline --> DB
+@enduml
+```
+
+### 3.2. Luồng Summary Batch
 
 Luồng batch precompute giúp tránh việc FE/BE gọi AI hàng loạt.
 
@@ -69,7 +148,7 @@ Lưu kết quả vào papers.summary
 Backend trả summary qua GET /api/v1/papers va GET /api/v1/papers/:id
 ```
 
-### 3.2. Luồng Summary On-Demand
+### 3.3. Luồng Summary On-Demand
 
 Dùng khi user mở trang chi tiết paper mà `summary` vẫn đang `NULL`.
 
@@ -92,7 +171,7 @@ Backend lưu summary vào papers.summary
 Backend trả summary cho FE
 ```
 
-### 3.3. Luồng Duplicate Checker
+### 3.4. Luồng Duplicate Checker
 
 Duplicate checker không gọi Groq AI. Logic nằm trong `paper_ai.py`.
 
@@ -125,7 +204,7 @@ Kết quả duplicate được Database pipeline lưu vào `matching_papers`. Ba
 GET /api/v1/papers/:id/matches?limit=5
 ```
 
-### 3.4. Luồng Related Papers
+### 3.5. Luồng Related Papers
 
 Related finder không gọi Groq AI. Logic nằm trong `paper_ai.py`.
 
@@ -159,7 +238,7 @@ duplicate_threshold = 0.50
 related_limit       = 5
 ```
 
-### 3.5. Luồng Topic Trends
+### 3.6. Luồng Topic Trends
 
 Topic trend analyzer dùng Groq AI để sắp xếp topic theo xu hướng.
 

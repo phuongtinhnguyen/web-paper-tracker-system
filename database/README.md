@@ -71,7 +71,101 @@ Các file/thư mục này không cần commit.
 
 ## 3. Kiến Trúc
 
-### 3.1. Database Connection
+### 3.1. Sơ Đồ Kiến Trúc Tổng Thể
+
+```mermaid
+flowchart TB
+    Env["database/.env<br/>DATABASE_URL"] --> DBConfig["database.py<br/>SQLAlchemy engine + SessionLocal"]
+    Models["models.py<br/>ORM models"] --> DBConfig
+    Alembic["Alembic migrations"] --> DB["PostgreSQL / Neon"]
+    DBConfig --> DB
+
+    Scheduler["run_hourly_pipeline.py<br/>scheduler / run-once"] --> Crawler["crawler_DB.py"]
+    Crawler --> ArxivClient["arxiv_client.py"]
+    ArxivClient --> Arxiv["arXiv API"]
+    Arxiv -.->|feed entries| ArxivClient
+    Crawler --> DB
+    DB -.->|existing papers / topics| Crawler
+
+    Scheduler --> Related["AI related finder<br/>paper_ai.find_related_papers"]
+    Scheduler --> Duplicate["AI duplicate checker<br/>paper_ai.check_duplicate"]
+    Scheduler --> Summary["AI summary batch<br/>paper_ai.summarize_pending_papers"]
+    Scheduler --> Trend["AI trend / fallback recent count"]
+
+    DB -.->|paper data| Related
+    DB -.->|paper data| Duplicate
+    DB -.->|pending papers| Summary
+    DB -.->|recent paper counts| Trend
+    Related --> DB
+    Duplicate --> DB
+    Summary --> DB
+    Trend --> DB
+
+    Scheduler --> Notifications["Create notifications<br/>notifications + user_notifications"]
+    Notifications --> DB
+    Notifications --> BackendPush["Backend internal webhook<br/>/api/v1/internal/notifications/push"]
+    BackendPush -.->|push status| Notifications
+```
+
+#### 3.1.1. Sơ Đồ Kiến Trúc Tổng Thể - PlantUML
+
+```plantuml
+@startuml
+top to bottom direction
+
+rectangle "database/.env\nDATABASE_URL" as Env
+rectangle "database.py\nSQLAlchemy engine + SessionLocal" as DBConfig
+rectangle "models.py\nORM models" as Models
+rectangle "Alembic migrations" as Alembic
+database "PostgreSQL / Neon" as DB
+
+rectangle "run_hourly_pipeline.py\nscheduler / run-once" as Scheduler
+rectangle "crawler_DB.py" as Crawler
+rectangle "arxiv_client.py" as ArxivClient
+rectangle "arXiv API" as Arxiv
+
+rectangle "AI related finder\npaper_ai.find_related_papers" as Related
+rectangle "AI duplicate checker\npaper_ai.check_duplicate" as Duplicate
+rectangle "AI summary batch\npaper_ai.summarize_pending_papers" as Summary
+rectangle "AI trend / fallback recent count" as Trend
+
+rectangle "Create notifications\nnotifications + user_notifications" as Notifications
+rectangle "Backend internal webhook\n/api/v1/internal/notifications/push" as BackendPush
+
+Env --> DBConfig
+Models --> DBConfig
+Alembic --> DB
+DBConfig --> DB
+
+Scheduler --> Crawler
+Crawler --> ArxivClient
+ArxivClient --> Arxiv
+Arxiv ..> ArxivClient : feed entries
+Crawler --> DB
+DB ..> Crawler : existing papers / topics
+
+Scheduler --> Related
+Scheduler --> Duplicate
+Scheduler --> Summary
+Scheduler --> Trend
+
+DB ..> Related : paper data
+DB ..> Duplicate : paper data
+DB ..> Summary : pending papers
+DB ..> Trend : recent paper counts
+Related --> DB
+Duplicate --> DB
+Summary --> DB
+Trend --> DB
+
+Scheduler --> Notifications
+Notifications --> DB
+Notifications --> BackendPush
+BackendPush ..> Notifications : push status
+@enduml
+```
+
+### 3.2. Database Connection
 
 File chính:
 
@@ -97,7 +191,7 @@ SessionLocal()
 Repository / crawler / AI script query database
 ```
 
-### 3.2. Database Schema
+### 3.3. Database Schema
 
 File chính:
 
@@ -139,7 +233,7 @@ Quan hệ chính:
 - `user_paper_interactions` lưu trạng thái đọc, rating và notes của user với paper.
 - `notifications` lưu nội dung thông báo; `user_notifications` phân phối thông báo cho từng user và lưu trạng thái đã đọc.
 
-### 3.3. Migration Flow
+### 3.4. Migration Flow
 
 ```txt
 models.py
@@ -157,7 +251,7 @@ alembic upgrade head
 PostgreSQL/Neon schema được cập nhật
 ```
 
-### 3.4. arXiv Crawler Flow
+### 3.5. arXiv Crawler Flow
 
 ```txt
 crawler/arxiv_client.py
@@ -184,7 +278,7 @@ Check trùng bằng arxiv_id
 Insert paper mới vào bảng papers
 ```
 
-### 3.5. Hourly Pipeline Flow
+### 3.6. Hourly Pipeline Flow
 
 File chính:
 

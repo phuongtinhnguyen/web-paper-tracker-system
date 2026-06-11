@@ -20,6 +20,7 @@ function optionalAuthMiddleware(req, res, next) {
     };
   } catch {
     // Public routes should still work when an optional token is missing/invalid.
+    // Nếu token sai, hết hạn hoặc không verify được thì không báo lỗi. Vì đây là optional auth nên API vẫn tiếp tục chạy như user chưa đăng nhập.
   }
 
   return next();

@@ -15,7 +15,74 @@ Frontend hiện có các màn hình/chức năng:
 | Notifications | Có `NotificationBell` trong header, auto refresh danh sách paper khi SSE báo paper mới | BE đã có `/notifications`, mark-read APIs và SSE `/notifications/stream` |
 | Trend | Có page `/trend` | BE đã có `/stats/topics/trends` |
 
-## 2. Cấu Trúc File Hiện Tại
+## 2. Sơ Đồ Kiến Trúc Tổng Thể
+
+```mermaid
+flowchart TB
+    Browser["Browser"] --> App["App.jsx<br/>React Router"]
+    App --> Providers["Providers<br/>FavoritesContext + CrawlerContext"]
+    Providers --> Protected["ProtectedRoute"]
+    Protected --> Layout["MainLayout<br/>Sidebar + Header + Outlet"]
+
+    Layout --> Pages["Pages<br/>Dashboard / Topics / Detail / Favorites / History / Trend / Settings"]
+    Pages --> Components["Reusable Components<br/>PaperCard / Pagination / PaperModal / SearchBar"]
+    Pages --> ApiLayer["services/API.js<br/>Axios helpers"]
+    Components --> Contexts["Shared State<br/>FavoritesContext / CrawlerContext"]
+    Contexts --> ApiLayer
+
+    ApiLayer --> Backend["Backend REST API<br/>http://localhost:8000/api/v1"]
+    Backend -.->|JSON response| ApiLayer
+    ApiLayer -.->|paper / auth / notification data| Pages
+    NotificationBell["NotificationBell"] --> SSE["SSE<br/>/notifications/stream"]
+    SSE --> Backend
+    Backend -.->|SSE event| NotificationBell
+    NotificationBell --> PaperEvent["paper-data-updated event"]
+    PaperEvent -.->|reload signal| Pages
+```
+
+### 2.1. Sơ Đồ Kiến Trúc Tổng Thể - PlantUML
+
+```plantuml
+@startuml
+top to bottom direction
+
+rectangle "Browser" as Browser
+rectangle "App.jsx\nReact Router" as App
+rectangle "Providers\nFavoritesContext + CrawlerContext" as Providers
+rectangle "ProtectedRoute" as Protected
+rectangle "MainLayout\nSidebar + Header + Outlet" as Layout
+rectangle "Pages\nDashboard / Topics / Detail / Favorites / History / Trend / Settings" as Pages
+rectangle "Reusable Components\nPaperCard / Pagination / PaperModal / SearchBar" as Components
+rectangle "services/API.js\nAxios helpers" as ApiLayer
+rectangle "Shared State\nFavoritesContext / CrawlerContext" as Contexts
+rectangle "Backend REST API\nhttp://localhost:8000/api/v1" as Backend
+rectangle "NotificationBell" as NotificationBell
+rectangle "SSE\n/notifications/stream" as SSE
+rectangle "paper-data-updated event" as PaperEvent
+
+Browser --> App
+App --> Providers
+Providers --> Protected
+Protected --> Layout
+
+Layout --> Pages
+Pages --> Components
+Pages --> ApiLayer
+Components --> Contexts
+Contexts --> ApiLayer
+
+ApiLayer --> Backend
+Backend ..> ApiLayer : JSON response
+ApiLayer ..> Pages : paper / auth / notification data
+NotificationBell --> SSE
+SSE --> Backend
+Backend ..> NotificationBell : SSE event
+NotificationBell --> PaperEvent
+PaperEvent ..> Pages : reload signal
+@enduml
+```
+
+## 3. Cấu Trúc File Hiện Tại
 
 ```txt
 frontend/
@@ -54,7 +121,7 @@ frontend/
         |-- Settingpage.jsx
 ```
 
-## 3. Setup Môi Trường
+## 4. Setup Môi Trường
 
 Chạy từ thư mục `frontend/`:
 
@@ -74,7 +141,7 @@ Nếu không có `.env`, FE dùng mặc định:
 http://localhost:8000/api/v1
 ```
 
-## 4. Hướng Dẫn Sử Dụng
+## 5. Hướng Dẫn Sử Dụng
 
 Chạy dev server:
 
@@ -88,7 +155,7 @@ Build kiểm tra:
 npm run build
 ```
 
-## 5. Ghi Chú Tích Hợp API
+## 6. Ghi Chú Tích Hợp API
 
 Các API FE đang gọi chính hiện đã có route Backend tương ứng: papers, search, topics, user-topics, favorites, history, manual crawler refresh, related/matching papers, ratings, notifications và topic trends.
 

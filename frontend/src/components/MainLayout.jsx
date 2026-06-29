@@ -12,7 +12,7 @@ const getUsername = () => {
 export default function MainLayout({ onSearch, onClearSearch }) {
   const location = useLocation();
   const [username, setUsername] = useState(getUsername);
-  const shouldShowSearchBar = location.pathname !== "/settings";
+  const shouldShowSearchBar = location.pathname === "/dashboard";
 
   useEffect(() => {
     const syncUsername = () => {
@@ -27,6 +27,12 @@ export default function MainLayout({ onSearch, onClearSearch }) {
       window.removeEventListener("storage", syncUsername);
     };
   }, []);
+
+  useEffect(() => {
+    if (!shouldShowSearchBar) {
+      onClearSearch?.();
+    }
+  }, [shouldShowSearchBar, onClearSearch]);
 
   return (
     <div className="flex h-screen bg-gray-50">

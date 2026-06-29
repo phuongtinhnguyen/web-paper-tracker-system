@@ -1,3 +1,9 @@
+// 1. Nhận request từ route
+// 2. Lấy dữ liệu cần thiết từ req
+// 3. Gọi service xử lý nghiệp vụ
+// 4. Trả response về client
+// 5. Không trực tiếp query database
+
 const asyncHandler = require("../../utils/asyncHandler");
 const { success } = require("../../utils/response");
 const topicService = require("./topic.service");

@@ -1,3 +1,4 @@
+const AppError = require("../../utils/appError");
 const historyRepository = require("./history.repository");
 
 function normalizeAuthors(authors) {
@@ -52,11 +53,15 @@ async function getHistory(userId, query) {
 }
 
 async function removeHistoryItem(userId, paperId) {
-  await historyRepository.removeHistoryItem(userId, paperId);
+  const removedItem = await historyRepository.removeHistoryItem(userId, paperId);
+
+  if (!removedItem) {
+    throw new AppError("Reading history item not found", 404);
+  }
 
   return {
-    paper_id: Number(paperId),
-    is_read: false,
+    paper_id: removedItem.paper_id,
+    is_read: removedItem.is_read,
   };
 }
 

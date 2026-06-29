@@ -81,10 +81,10 @@ export default function HistoryPage({ searchQuery }) {
   const handleRemoveItem = async (id) => {
     try {
       await removeHistory(id);
-      const newPage =
-        historyList.length === 1 && currentPage > 1
-          ? currentPage - 1
-          : currentPage;
+      setHistoryList((prev) => prev.filter((paper) => paper.id !== id));
+      setTotal((prev) => Math.max(0, prev - 1));
+
+      const newPage = historyList.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage;
 
       if (newPage === currentPage) {
         fetchHistory(newPage);

@@ -183,17 +183,62 @@ def stop_process(name, process):
         print(f"[warn] Could not stop {name}: {error}", flush=True)
 
 
+class HelpFormatter(
+    argparse.ArgumentDefaultsHelpFormatter,
+    argparse.RawDescriptionHelpFormatter,
+):
+    pass
+
+
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Start backend, frontend, AI service, and database pipeline."
+        description="Start backend, frontend, AI service, and database pipeline.",
+        formatter_class=HelpFormatter,
+        epilog="""Examples:
+  python start_all.py
+  python start_all.py --skip-crawler
+  python start_all.py --skip-database
+  python start_all.py --no-pipeline-run-immediately
+  python start_all.py --pipeline-interval-hours 2 --crawler-max-results 5
+""",
     )
-    parser.add_argument("--skip-backend", action="store_true")
-    parser.add_argument("--skip-frontend", action="store_true")
-    parser.add_argument("--skip-ai", action="store_true")
-    parser.add_argument("--skip-database", action="store_true")
-    parser.add_argument("--ai-host", default="0.0.0.0")
-    parser.add_argument("--ai-port", type=int, default=8001)
-    parser.add_argument("--pipeline-interval-hours", type=float, default=1)
+    parser.add_argument(
+        "--skip-backend",
+        action="store_true",
+        help="Do not start the Express backend.",
+    )
+    parser.add_argument(
+        "--skip-frontend",
+        action="store_true",
+        help="Do not start the React/Vite frontend.",
+    )
+    parser.add_argument(
+        "--skip-ai",
+        action="store_true",
+        help="Do not start the FastAPI AI service.",
+    )
+    parser.add_argument(
+        "--skip-database",
+        action="store_true",
+        help="Do not start the database hourly pipeline.",
+    )
+    parser.add_argument(
+        "--ai-host",
+        default="0.0.0.0",
+        help="Host for the AI service.",
+    )
+    parser.add_argument(
+        "--ai-port",
+        type=int,
+        default=8001,
+        help="Port for the AI service.",
+    )
+    parser.add_argument(
+        "--pipeline-interval-hours",
+        type=float,
+        default=1,
+        help="Interval between scheduled database pipeline runs.",
+    )
     parser.add_argument(
         "--no-pipeline-run-immediately",
         action="store_true",
@@ -204,20 +249,62 @@ def parse_args():
         action="store_true",
         help=argparse.SUPPRESS,
     )
-    parser.add_argument("--crawler-max-results", type=int, default=5)
-    parser.add_argument("--crawler-sleep-seconds", type=int, default=10)
-    parser.add_argument("--summary-batch-size", type=int, default=20)
-    parser.add_argument("--related-threshold", type=float, default=0.20)
-    parser.add_argument("--related-limit", type=int, default=5)
-    parser.add_argument("--trend-recent-days", type=int, default=7)
-    parser.add_argument("--skip-summary", action="store_true")
-    parser.add_argument("--skip-ai-trends", action="store_true")
+    parser.add_argument(
+        "--crawler-max-results",
+        type=int,
+        default=5,
+        help="Maximum arXiv papers fetched per crawler run.",
+    )
+    parser.add_argument(
+        "--crawler-sleep-seconds",
+        type=int,
+        default=10,
+        help="Delay between crawler requests.",
+    )
+    parser.add_argument(
+        "--summary-batch-size",
+        type=int,
+        default=20,
+        help="Maximum pending papers summarized per pipeline run.",
+    )
+    parser.add_argument(
+        "--related-threshold",
+        type=float,
+        default=0.20,
+        help="Similarity threshold for related-paper detection.",
+    )
+    parser.add_argument(
+        "--related-limit",
+        type=int,
+        default=5,
+        help="Maximum related papers saved per source paper.",
+    )
+    parser.add_argument(
+        "--trend-recent-days",
+        type=int,
+        default=7,
+        help="Recent-day window used for topic trend fallback.",
+    )
+    parser.add_argument(
+        "--skip-summary",
+        action="store_true",
+        help="Skip batch summary generation in the database pipeline.",
+    )
+    parser.add_argument(
+        "--skip-ai-trends",
+        action="store_true",
+        help="Skip Groq-based AI trend ranking and use fallback trend logic.",
+    )
     parser.add_argument(
         "--skip-crawler",
         action="store_true",
         help="Skip only arXiv crawling; other pipeline steps still run on existing DB papers.",
     )
-    parser.add_argument("--skip-trends", action="store_true")
+    parser.add_argument(
+        "--skip-trends",
+        action="store_true",
+        help="Skip topic trend update step in the database pipeline.",
+    )
     return parser.parse_args()
 
 

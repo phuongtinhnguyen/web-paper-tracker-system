@@ -1,3 +1,10 @@
+// 1. Nhận dữ liệu đã được controller đưa xuống
+// 2. Xử lý logic nghiệp vụ
+// 3. Gọi repository để lấy/lưu dữ liệu
+// 4. Kiểm tra điều kiện nghiệp vụ
+// 5. Format hoặc chuẩn hóa dữ liệu trước khi trả về controller
+// 6. Không trực tiếp xử lý req/res HTTP
+
 const AppError = require("../../utils/appError");
 const topicRepository = require("./topic.repository");
 

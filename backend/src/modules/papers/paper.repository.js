@@ -51,7 +51,44 @@ function buildReadStatusSql(userId, params) {
             ) AS is_new`,
   };
 }
-
+/*
+Example return:
+{
+  papers: [
+    {
+      id: 3,
+      arxiv_id: "2605.10933v1",
+      title: "DECO: Sparse Mixture-of-Experts...",
+      abstract: "While Mixture-of-Experts...",
+      summary: "This paper proposes...",
+      authors: "Chenyang Song, Weilin ...",
+      published_date: "2026-05-11T17:58:28.000Z",
+      pdf_url: "http://arxiv.org/abs/2605.10933v1",
+      avg_rating: 4.2,
+      created_at: "2026-05-12T18:12:10.000Z",
+      topic_id: 1,
+      is_favorite: true,
+      is_read: false
+    },
+    {
+      id: 4,
+      arxiv_id: "2605.10931v1",
+      title: "Quantifying Concentration...",
+      abstract: "Transformers with self...",
+      summary: null,
+      authors: "Albert Alcade, Leon B...",
+      published_date: "2026-05-11T17:58:14.000Z",
+      pdf_url: "http://arxiv.org/abs/2605.10931v1",
+      avg_rating: null,
+      created_at: "2026-05-12T18:12:10.000Z",
+      topic_id: 1,
+      is_favorite: false,
+      is_read: true
+    }
+  ],
+  total: 10
+}
+*/
 async function getPapers({ page, limit, filter, topic_id: topicId, userId }) {
   const offset = (page - 1) * limit;
   const { whereSql, params } = buildPaperFilters({

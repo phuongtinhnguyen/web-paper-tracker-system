@@ -22,7 +22,7 @@ Web Paper Tracker System là hệ thống web hỗ trợ người dùng theo dõ
 - AI Agents
 - Stock Prediction
 
-Hệ thống crawl dữ liệu từ arXiv API, lưu thông tin paper vào PostgreSQL, cho phép người dùng tìm kiếm/lưu paper yêu thích và sử dụng AI để tạo bản tóm tắt tiếng Việt ngắn gọn từ abstract.
+Hệ thống crawl dữ liệu từ arXiv API, lưu thông tin paper vào PostgreSQL, cho phép người dùng tìm kiếm/lưu paper yêu thích và sử dụng AI để tạo bản tóm tắt tiếng Anh ngắn gọn từ abstract.
 
 ---
 
@@ -178,7 +178,7 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 
 ### Nâng cao - Thống kê xu hướng theo chủ đề
 
-- [x] Dashboard thống kê số paper theo chủ đề
+- [x] Trang `/trend` hiển thị danh sách topic xu hướng và paper theo topic được chọn
 
 ### Nâng cao - Chấm điểm paper đang đọc
 
@@ -472,7 +472,7 @@ Mỗi dòng dưới đây là một feature độc lập cần hoàn thành:
 ### Tóm tắt ngắn ý chính của paper từ abstract
 
 - [x] Hàm `summarize_abstract`
-- [x] Prompt tóm tắt abstract thành tiếng Việt 3-4 câu
+- [x] Prompt tóm tắt abstract thành tiếng Anh 3-4 câu
 - [x] Gọi Groq API với model `llama-3.3-70b-versatile`
 - [x] Hàm `summarize_pending_papers`
 - [x] Ghi summary vào paper thiếu summary
@@ -1080,13 +1080,14 @@ Frontend và Backend thống nhất một base URL khi tích hợp.
 
 | Route | Page | Chức năng |
 |---|---|---|
-| `/dashboard` | Dashboard | Tổng quan paper mới, topic, paper đã đọc |
-| `/topics` | Topic Management | Quản lý topic theo dõi |
-| `/papers` | Paper List | Xem danh sách paper |
+| `/dashboard` | Dashboard | Danh sách paper, filter, search, pagination và nút tải lại dữ liệu |
+| `/topics` | TopicsPage | Xem tất cả chủ đề trong DB và paper theo từng chủ đề |
+| `/trend` | TrendPage | Xem topic xu hướng và paper theo topic xu hướng |
+| `/tracking-topics` | TrackingTopicPage | Quản lý chủ đề user đang theo dõi |
 | `/paper/:id` | Paper Detail | Xem chi tiết paper |
 | `/favorites` | Favorite Papers | Xem paper yêu thích |
 | `/history` | Reading History | Xem lịch sử đọc |
-| `/change-password` | Change Password | Đổi mật khẩu |
+| `/settings` | Settingpage | Cập nhật username/profile và đổi mật khẩu |
 
 ---
 
@@ -1097,7 +1098,10 @@ Frontend và Backend thống nhất một base URL khi tích hợp.
 | `MainLayout` | Layout chính sau đăng nhập, gồm sidebar, header và page outlet |
 | `Sidebar` | Navigation, user menu, logout, topic shortcut |
 | `SearchBar` | Input search, submit query, clear search |
+| `NotificationBell` | Chuông thông báo, mark read và nhận SSE notification realtime |
 | `PaperCard` | Hiển thị paper, summary/abstract, authors, ngày xuất bản, link đọc, nút favorite |
+| `PaperModal` | Modal xem nhanh summary hoặc tổng quan bài báo |
+| `Pagination` | Phân trang rút gọn bằng dấu `...` |
 | `SuccessModal` | Modal thông báo kết quả thao tác |
 
 ---

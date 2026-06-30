@@ -183,7 +183,7 @@ Script sẽ start:
 
 ```txt
 Backend:  http://localhost:8000/api/v1/health
-Frontend: http://localhost:5173
+Frontend: http://localhost:5713
 AI:       http://localhost:8001/docs
 Database: hourly pipeline scheduler
 ```
@@ -273,6 +273,240 @@ database  -> SQLAlchemy models, Alembic migrations, arXiv crawler, hourly pipeli
 ai        -> Groq summary service, duplicate checker, related finder, trend analyzer
 ```
 
+### 2.1. Sơ Đồ Kiến Trúc Tổng Thể
+
+```mermaid
+flowchart LR
+    User["Người dùng"]
+    Arxiv["arXiv API"]
+    Groq["Groq API"]
+
+    subgraph FEZone["FE - frontend/"]
+        FE["Frontend App<br/>React + Vite"]
+        Bell["NotificationBell<br/>SSE client"]
+    end
+
+    subgraph BEZone["BE - backend/"]
+        BE["Backend API<br/>Express /api/v1"]
+        Push["Internal notification webhook<br/>/api/v1/internal/notifications/push"]
+        Stream["SSE stream<br/>/api/v1/notifications/stream"]
+    end
+
+    subgraph DBZone["DB - database/"]
+        DB["PostgreSQL / Neon"]
+        Scheduler["Database Pipeline<br/>run_hourly_pipeline.py"]
+    end
+
+    subgraph AIZone["AI - ai/"]
+        AISvc["AI Service<br/>FastAPI :8001"]
+        AIModule["AI Module<br/>paper_ai.py"]
+    end
+
+    User --> FE
+    FE --> BE
+    BE --> DB
+    %% Layout order: User -> FE -> BE -> DB -> AI
+    User ~~~ FE
+    FE ~~~ BE
+    BE ~~~ DB
+    DB ~~~ AISvc
+    BE -.->|summary request| AISvc
+    BE -.->|JSON response| FE
+    FE -.->|rendered data| User
+
+    Scheduler --> Arxiv
+    Arxiv -.->|paper feed| Scheduler
+    Scheduler --> DB
+    Scheduler --> AIModule
+    Scheduler --> Push
+    Push --> BE
+    DB -.->|papers / topics / notifications| BE
+    AISvc --> Groq
+    Groq -.->|AI completion| AISvc
+    AISvc -.->|summary response| BE
+    AIModule --> Groq
+    Groq -.->|AI completion| AIModule
+    AIModule -.->|summary / related / trends| Scheduler
+    BE --> Stream
+    Stream -.->|SSE event| Bell
+    Bell --> FE
+```
+
+### 2.2. Sơ Đồ Kiến Trúc Tổng Thể - PlantUML
+
+```plantuml
+@startuml
+top to bottom direction
+
+rectangle "Người dùng" as User
+
+rectangle "FE - frontend/\nFrontend App\nReact + Vite" as FE
+rectangle "NotificationBell\nSSE client" as Bell
+
+rectangle "BE - backend/\nBackend API\nExpress /api/v1" as BE
+rectangle "Internal notification webhook\n/api/v1/internal/notifications/push" as Push
+rectangle "SSE stream\n/api/v1/notifications/stream" as Stream
+
+database "DB - database/\nPostgreSQL / Neon" as DB
+rectangle "Database Pipeline\nrun_hourly_pipeline.py" as Scheduler
+
+rectangle "AI - ai/\nAI Service\nFastAPI :8001" as AISvc
+rectangle "AI Module\npaper_ai.py" as AIModule
+
+rectangle "arXiv API" as Arxiv
+rectangle "Groq API" as Groq
+
+User --> FE
+FE --> BE
+BE --> DB
+BE --> AISvc
+AISvc --> Groq
+
+Scheduler --> Arxiv
+Arxiv ..> Scheduler : paper feed
+Scheduler --> DB
+Scheduler --> AIModule
+Scheduler --> Push
+Push --> BE
+
+BE --> Stream
+Stream ..> Bell : SSE event
+Bell --> FE
+
+BE ..> FE : JSON response
+FE ..> User : rendered data
+DB ..> BE : papers / topics / notifications
+
+Groq ..> AISvc : AI completion
+AISvc ..> BE : summary response
+
+AIModule --> Groq
+Groq ..> AIModule : AI completion
+AIModule ..> Scheduler : summary / related / trends
+@enduml
+```
+
+### 2.3. Sơ Đồ Thiết Kế Wireframe / Mô Tả Màn Hình
+
+Sơ đồ dưới đây mô tả đơn giản các màn hình chính và hướng điều hướng trong Frontend. Mỗi màn hình được thể hiện ở mức chức năng, không đi sâu vào chi tiết UI.
+
+```mermaid
+flowchart LR
+    User["Người dùng"] --> Login["Login"]
+    Login --> Register["Register"]
+    Register --> Login
+
+    Login --> App["Main Layout<br/>Sidebar + Header"]
+
+    App --> Dashboard["Dashboard<br/>Paper List"]
+    App --> Topics["Topics"]
+    App --> Tracking["Tracking Topics"]
+    App --> Favorites["Favorites"]
+    App --> History["History"]
+    App --> Trend["Trend"]
+    App --> Settings["Settings"]
+
+    Dashboard --> Detail["Paper Detail"]
+    Topics --> Detail
+    Tracking --> Detail
+    Favorites --> Detail
+    History --> Detail
+
+    App --> Notification["Notification Bell"]
+    Notification --> Tracking
+```
+
+| Route | Màn hình | Mô tả ngắn |
+| --- | --- | --- |
+| `/` | Login | Đăng nhập bằng email/password và chuyển sang đăng ký khi cần. |
+| `/dang-ky` | Register | Tạo tài khoản mới cho người dùng. |
+| `/dashboard` | Dashboard / Paper List | Xem paper mới, tìm kiếm, lọc, tải lại dữ liệu và mở chi tiết paper. |
+| `/topics` | Topics | Xem danh sách chủ đề, theo dõi/bỏ theo dõi và xem paper theo chủ đề. |
+| `/tracking-topics` | Tracking Topics | Xem các chủ đề đang theo dõi và paper tương ứng. |
+| `/paper/:id` | Paper Detail | Xem thông tin chi tiết paper, abstract, summary, rating, favorite, related/matching papers. |
+| `/favorites` | Favorites | Xem và quản lý các paper đã lưu yêu thích. |
+| `/history` | History | Xem và xóa lịch sử đọc paper. |
+| `/trend` | Trend | Xem các chủ đề nghiên cứu đang có xu hướng. |
+| `/settings` | Settings | Cập nhật tên người dùng, đổi mật khẩu và đăng xuất. |
+| Header | NotificationBell | Xem thông báo paper mới, đánh dấu đã đọc và điều hướng tới chủ đề/paper liên quan. |
+
+### 2.4. User Stories, Luồng Sử Dụng Chính Và Tiêu Chí Hoàn Thành
+
+#### User Stories
+
+| Mã | Vai trò | Nhu cầu | Mục đích |
+| --- | --- | --- | --- |
+| US-01 | Người dùng mới | Đăng ký tài khoản và đăng nhập vào hệ thống | Có không gian cá nhân để theo dõi topic, lưu paper yêu thích, xem lịch sử và nhận thông báo. |
+| US-02 | Người dùng đã đăng nhập | Chọn và theo dõi các chủ đề quan tâm | Hệ thống ưu tiên hiển thị paper mới đúng lĩnh vực người dùng muốn theo dõi. |
+| US-03 | Người dùng | Xem danh sách paper mới, tìm kiếm và lọc paper | Nhanh chóng tìm được paper phù hợp theo keyword, topic hoặc thời gian. |
+| US-04 | Người dùng | Mở chi tiết paper để xem abstract, tóm tắt, tác giả, ngày công bố và link nguồn | Đánh giá nhanh paper có đáng đọc tiếp hay không. |
+| US-05 | Người dùng | Lưu paper yêu thích, đánh giá paper và xem lại lịch sử đọc | Quản lý các paper quan trọng và truy cập lại khi cần. |
+| US-06 | Người dùng | Nhận thông báo khi pipeline phát hiện paper mới theo chủ đề | Không bỏ lỡ paper mới mà không cần tự kiểm tra liên tục. |
+| US-07 | Người dùng | Xem paper liên quan, paper trùng/gần giống và topic xu hướng | Khám phá thêm paper liên quan và nắm xu hướng nghiên cứu hiện tại. |
+| US-08 | Thành viên vận hành | Chạy pipeline/crawler tự động hoặc thủ công | Cập nhật dữ liệu paper, summary, related, duplicate, trend và notification vào hệ thống. |
+
+#### Luồng Sử Dụng Chính
+
+```txt
+Người dùng đăng ký/đăng nhập
+        |
+        v
+Chọn hoặc theo dõi chủ đề quan tâm
+        |
+        v
+Xem Dashboard / danh sách paper mới
+        |
+        v
+Tìm kiếm, lọc hoặc tải lại paper mới
+        |
+        v
+Mở chi tiết paper
+        |
+        v
+Xem abstract, tóm tắt AI, rating, favorite, related/matching papers
+        |
+        v
+Lưu yêu thích / đánh giá / quay lại lịch sử khi cần
+```
+
+Luồng cập nhật dữ liệu nền:
+
+```txt
+Pipeline chạy theo lịch hoặc chạy thủ công
+        |
+        v
+Crawler lấy paper mới từ arXiv
+        |
+        v
+Lưu paper mới vào PostgreSQL
+        |
+        v
+AI tạo summary, related papers, duplicate/matching, trend
+        |
+        v
+Pipeline tạo notification theo topic
+        |
+        v
+Backend đẩy SSE xuống Frontend
+        |
+        v
+NotificationBell cập nhật và Dashboard/Topic reload dữ liệu khi cần
+```
+
+#### Tiêu Chí Hoàn Thành
+
+| Nhóm chức năng | Tiêu chí hoàn thành |
+| --- | --- |
+| Auth | Người dùng đăng ký, đăng nhập, lấy thông tin cá nhân, đổi tên và đổi mật khẩu được bằng API/FE. |
+| Topic | Người dùng xem danh sách topic, theo dõi/bỏ theo dõi topic và xem paper theo topic được. |
+| Paper list/search | Dashboard hiển thị paper mới, có phân trang, tìm kiếm/lọc và nút tải lại dữ liệu. |
+| Paper detail | Trang chi tiết hiển thị title, abstract, summary, authors, published date, url, rating, favorite, related/matching papers. |
+| Favorite/history/rating | Người dùng lưu/bỏ lưu favorite, xem lịch sử đọc, xóa lịch sử và đánh giá paper được. |
+| AI summary/related/duplicate/trend | Pipeline hoặc API tạo được summary, related papers, matching papers và cập nhật topic trending. |
+| Notification realtime | Khi có paper mới, notification được lưu DB, Backend đẩy SSE và FE hiển thị ở chuông thông báo. |
+| Pipeline/crawler | Có thể chạy pipeline theo lịch hoặc thủ công; dữ liệu paper mới được lưu DB và không insert trùng cơ bản. |
+| Documentation/demo | README/spec có hướng dẫn setup, `.env`, chạy hệ thống, API overview, kiến trúc và video demo minh chứng. |
+
 Luồng chạy chính:
 
 ```txt
@@ -325,7 +559,7 @@ Tài liệu chi tiết nằm ở từng module:
 
 | Service | URL |
 | --- | --- |
-| Frontend | `http://localhost:5173` |
+| Frontend | `http://localhost:5713` |
 | Backend health | `http://localhost:8000/api/v1/health` |
 | Backend API base | `http://localhost:8000/api/v1` |
 | AI docs | `http://localhost:8001/docs` |

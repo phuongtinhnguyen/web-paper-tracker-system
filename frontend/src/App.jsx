@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { FavoritesProvider } from './contexts/FavoritesContext';
 import { CrawlerProvider } from './contexts/CrawlerContext';
@@ -18,6 +18,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   const [searchQuery, setSearchQuery] = useState("");
+  const handleSearch = useCallback((q) => setSearchQuery(q), []);
+  const handleClearSearch = useCallback(() => setSearchQuery(""), []);
 
   return (
     <BrowserRouter>
@@ -30,8 +32,8 @@ function App() {
             <Route element={
               <ProtectedRoute>
                 <MainLayout
-                  onSearch={(q) => setSearchQuery(q)}
-                  onClearSearch={() => setSearchQuery("")}
+                  onSearch={handleSearch}
+                  onClearSearch={handleClearSearch}
                 />
               </ProtectedRoute>
             }>
@@ -42,17 +44,17 @@ function App() {
               } />
               <Route path="/favorites" element={
                 <ProtectedRoute>
-                  <FavoritesPage searchQuery={searchQuery} />
+                  <FavoritesPage />
                 </ProtectedRoute>
               } />
               <Route path="/history" element={
                 <ProtectedRoute>
-                  <HistoryPage searchQuery={searchQuery} />
+                  <HistoryPage />
                 </ProtectedRoute>
               } />
               <Route path="/topics" element={
                 <ProtectedRoute>
-                  <TopicPage searchQuery={searchQuery} />
+                  <TopicPage />
                 </ProtectedRoute>
               } />
               <Route path="/trend" element={
@@ -62,7 +64,7 @@ function App() {
               } />
               <Route path="/tracking-topics" element={
                 <ProtectedRoute>
-                  <TrackingTopics searchQuery={searchQuery} />
+                  <TrackingTopics />
                 </ProtectedRoute>
               } />
               <Route path="/paper/:id" element={

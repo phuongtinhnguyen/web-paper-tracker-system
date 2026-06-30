@@ -386,6 +386,50 @@ AIModule ..> Scheduler : summary / related / trends
 @enduml
 ```
 
+### 2.3. Sơ Đồ Thiết Kế Wireframe / Mô Tả Màn Hình
+
+Sơ đồ dưới đây mô tả đơn giản các màn hình chính và hướng điều hướng trong Frontend. Mỗi màn hình được thể hiện ở mức chức năng, không đi sâu vào chi tiết UI.
+
+```mermaid
+flowchart LR
+    User["Người dùng"] --> Login["Login"]
+    Login --> Register["Register"]
+    Register --> Login
+
+    Login --> App["Main Layout<br/>Sidebar + Header"]
+
+    App --> Dashboard["Dashboard<br/>Paper List"]
+    App --> Topics["Topics"]
+    App --> Tracking["Tracking Topics"]
+    App --> Favorites["Favorites"]
+    App --> History["History"]
+    App --> Trend["Trend"]
+    App --> Settings["Settings"]
+
+    Dashboard --> Detail["Paper Detail"]
+    Topics --> Detail
+    Tracking --> Detail
+    Favorites --> Detail
+    History --> Detail
+
+    App --> Notification["Notification Bell"]
+    Notification --> Tracking
+```
+
+| Route | Màn hình | Mô tả ngắn |
+| --- | --- | --- |
+| `/` | Login | Đăng nhập bằng email/password và chuyển sang đăng ký khi cần. |
+| `/dang-ky` | Register | Tạo tài khoản mới cho người dùng. |
+| `/dashboard` | Dashboard / Paper List | Xem paper mới, tìm kiếm, lọc, tải lại dữ liệu và mở chi tiết paper. |
+| `/topics` | Topics | Xem danh sách chủ đề, theo dõi/bỏ theo dõi và xem paper theo chủ đề. |
+| `/tracking-topics` | Tracking Topics | Xem các chủ đề đang theo dõi và paper tương ứng. |
+| `/paper/:id` | Paper Detail | Xem thông tin chi tiết paper, abstract, summary, rating, favorite, related/matching papers. |
+| `/favorites` | Favorites | Xem và quản lý các paper đã lưu yêu thích. |
+| `/history` | History | Xem và xóa lịch sử đọc paper. |
+| `/trend` | Trend | Xem các chủ đề nghiên cứu đang có xu hướng. |
+| `/settings` | Settings | Cập nhật tên người dùng, đổi mật khẩu và đăng xuất. |
+| Header | NotificationBell | Xem thông báo paper mới, đánh dấu đã đọc và điều hướng tới chủ đề/paper liên quan. |
+
 Luồng chạy chính:
 
 ```txt

@@ -430,6 +430,83 @@ flowchart LR
 | `/settings` | Settings | Cập nhật tên người dùng, đổi mật khẩu và đăng xuất. |
 | Header | NotificationBell | Xem thông báo paper mới, đánh dấu đã đọc và điều hướng tới chủ đề/paper liên quan. |
 
+### 2.4. User Stories, Luồng Sử Dụng Chính Và Tiêu Chí Hoàn Thành
+
+#### User Stories
+
+| Mã | Vai trò | Nhu cầu | Mục đích |
+| --- | --- | --- | --- |
+| US-01 | Người dùng mới | Đăng ký tài khoản và đăng nhập vào hệ thống | Có không gian cá nhân để theo dõi topic, lưu paper yêu thích, xem lịch sử và nhận thông báo. |
+| US-02 | Người dùng đã đăng nhập | Chọn và theo dõi các chủ đề quan tâm | Hệ thống ưu tiên hiển thị paper mới đúng lĩnh vực người dùng muốn theo dõi. |
+| US-03 | Người dùng | Xem danh sách paper mới, tìm kiếm và lọc paper | Nhanh chóng tìm được paper phù hợp theo keyword, topic hoặc thời gian. |
+| US-04 | Người dùng | Mở chi tiết paper để xem abstract, tóm tắt, tác giả, ngày công bố và link nguồn | Đánh giá nhanh paper có đáng đọc tiếp hay không. |
+| US-05 | Người dùng | Lưu paper yêu thích, đánh giá paper và xem lại lịch sử đọc | Quản lý các paper quan trọng và truy cập lại khi cần. |
+| US-06 | Người dùng | Nhận thông báo khi pipeline phát hiện paper mới theo chủ đề | Không bỏ lỡ paper mới mà không cần tự kiểm tra liên tục. |
+| US-07 | Người dùng | Xem paper liên quan, paper trùng/gần giống và topic xu hướng | Khám phá thêm paper liên quan và nắm xu hướng nghiên cứu hiện tại. |
+| US-08 | Thành viên vận hành | Chạy pipeline/crawler tự động hoặc thủ công | Cập nhật dữ liệu paper, summary, related, duplicate, trend và notification vào hệ thống. |
+
+#### Luồng Sử Dụng Chính
+
+```txt
+Người dùng đăng ký/đăng nhập
+        |
+        v
+Chọn hoặc theo dõi chủ đề quan tâm
+        |
+        v
+Xem Dashboard / danh sách paper mới
+        |
+        v
+Tìm kiếm, lọc hoặc tải lại paper mới
+        |
+        v
+Mở chi tiết paper
+        |
+        v
+Xem abstract, tóm tắt AI, rating, favorite, related/matching papers
+        |
+        v
+Lưu yêu thích / đánh giá / quay lại lịch sử khi cần
+```
+
+Luồng cập nhật dữ liệu nền:
+
+```txt
+Pipeline chạy theo lịch hoặc chạy thủ công
+        |
+        v
+Crawler lấy paper mới từ arXiv
+        |
+        v
+Lưu paper mới vào PostgreSQL
+        |
+        v
+AI tạo summary, related papers, duplicate/matching, trend
+        |
+        v
+Pipeline tạo notification theo topic
+        |
+        v
+Backend đẩy SSE xuống Frontend
+        |
+        v
+NotificationBell cập nhật và Dashboard/Topic reload dữ liệu khi cần
+```
+
+#### Tiêu Chí Hoàn Thành
+
+| Nhóm chức năng | Tiêu chí hoàn thành |
+| --- | --- |
+| Auth | Người dùng đăng ký, đăng nhập, lấy thông tin cá nhân, đổi tên và đổi mật khẩu được bằng API/FE. |
+| Topic | Người dùng xem danh sách topic, theo dõi/bỏ theo dõi topic và xem paper theo topic được. |
+| Paper list/search | Dashboard hiển thị paper mới, có phân trang, tìm kiếm/lọc và nút tải lại dữ liệu. |
+| Paper detail | Trang chi tiết hiển thị title, abstract, summary, authors, published date, url, rating, favorite, related/matching papers. |
+| Favorite/history/rating | Người dùng lưu/bỏ lưu favorite, xem lịch sử đọc, xóa lịch sử và đánh giá paper được. |
+| AI summary/related/duplicate/trend | Pipeline hoặc API tạo được summary, related papers, matching papers và cập nhật topic trending. |
+| Notification realtime | Khi có paper mới, notification được lưu DB, Backend đẩy SSE và FE hiển thị ở chuông thông báo. |
+| Pipeline/crawler | Có thể chạy pipeline theo lịch hoặc thủ công; dữ liệu paper mới được lưu DB và không insert trùng cơ bản. |
+| Documentation/demo | README/spec có hướng dẫn setup, `.env`, chạy hệ thống, API overview, kiến trúc và video demo minh chứng. |
+
 Luồng chạy chính:
 
 ```txt
